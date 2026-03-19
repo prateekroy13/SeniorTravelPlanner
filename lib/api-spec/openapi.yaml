@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SeniorTravel API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: itinerary
+    description: Itinerary generation and management
+  - name: destinations
+    description: Destination discovery
 paths:
   /healthz:
     get:
@@ -24,6 +27,134 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /itineraries:
+    get:
+      operationId: getItineraries
+      tags: [itinerary]
+      summary: List saved itineraries
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of itineraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Itinerary"
+    post:
+      operationId: createItinerary
+      tags: [itinerary]
+      summary: Save an itinerary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItineraryBody"
+      responses:
+        "201":
+          description: Created itinerary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Itinerary"
+
+  /itineraries/{id}:
+    get:
+      operationId: getItinerary
+      tags: [itinerary]
+      summary: Get itinerary by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Itinerary detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Itinerary"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteItinerary
+      tags: [itinerary]
+      summary: Delete an itinerary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /itineraries/generate:
+    post:
+      operationId: generateItinerary
+      tags: [itinerary]
+      summary: Generate a new AI itinerary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateItineraryBody"
+      responses:
+        "200":
+          description: Generated itinerary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedItinerary"
+
+  /destinations:
+    get:
+      operationId: getDestinations
+      tags: [destinations]
+      summary: Get popular destinations
+      responses:
+        "200":
+          description: List of destinations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Destination"
+
+  /destinations/search:
+    get:
+      operationId: searchDestinations
+      tags: [destinations]
+      summary: Search destinations
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Destination"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +165,350 @@ components:
       required:
         - status
 
+    UserPreferences:
+      type: object
+      properties:
+        pace:
+          type: string
+          enum: [easy, moderate, active]
+        maxStepsPerDay:
+          type: number
+        dietaryNeeds:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        budgetLevel:
+          type: string
+          enum: [budget, mid, luxury]
+        accessibilityNeeds:
+          type: array
+          items:
+            type: string
+      required:
+        - pace
+
+    GenerateItineraryBody:
+      type: object
+      properties:
+        city:
+          type: string
+        country:
+          type: string
+        days:
+          type: number
+          minimum: 3
+          maximum: 7
+        travelMonth:
+          type: string
+        preferences:
+          $ref: "#/components/schemas/UserPreferences"
+      required:
+        - city
+        - country
+        - days
+        - travelMonth
+        - preferences
+
+    CreateItineraryBody:
+      type: object
+      properties:
+        userId:
+          type: string
+        title:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        days:
+          type: number
+        travelMonth:
+          type: string
+        generatedData:
+          type: object
+          additionalProperties: true
+        preferences:
+          $ref: "#/components/schemas/UserPreferences"
+      required:
+        - title
+        - city
+        - country
+        - days
+        - travelMonth
+        - generatedData
+
+    Itinerary:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        days:
+          type: number
+        travelMonth:
+          type: string
+        generatedData:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - city
+        - country
+        - days
+        - travelMonth
+        - generatedData
+        - createdAt
+        - updatedAt
+
+    DayActivity:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        duration:
+          type: string
+        walkingMinutes:
+          type: number
+        steps:
+          type: number
+        cost:
+          type: string
+        tips:
+          type: string
+        isRestStop:
+          type: boolean
+      required:
+        - name
+        - description
+        - duration
+        - walkingMinutes
+        - steps
+        - cost
+
+    Restaurant:
+      type: object
+      properties:
+        name:
+          type: string
+        cuisine:
+          type: string
+        priceRange:
+          type: string
+        description:
+          type: string
+        wheelchairFriendly:
+          type: boolean
+        nearbyAttraction:
+          type: string
+      required:
+        - name
+        - cuisine
+        - priceRange
+        - description
+
+    TransportOption:
+      type: object
+      properties:
+        mode:
+          type: string
+        description:
+          type: string
+        estimatedCost:
+          type: string
+        accessibilityNotes:
+          type: string
+      required:
+        - mode
+        - description
+        - estimatedCost
+
+    SideTrip:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        distance:
+          type: string
+        extraSteps:
+          type: number
+        extraTime:
+          type: string
+        estimatedCost:
+          type: string
+      required:
+        - name
+        - description
+        - distance
+        - extraSteps
+        - extraTime
+        - estimatedCost
+
+    DayPlan:
+      type: object
+      properties:
+        dayNumber:
+          type: number
+        theme:
+          type: string
+        morning:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayActivity"
+        afternoon:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayActivity"
+        evening:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayActivity"
+        totalSteps:
+          type: number
+        totalWalkingMinutes:
+          type: number
+        activeHours:
+          type: number
+        estimatedCostLow:
+          type: number
+        estimatedCostHigh:
+          type: number
+        currency:
+          type: string
+        restaurants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Restaurant"
+        transportOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportOption"
+        sideTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/SideTrip"
+        crowdAvoidanceTip:
+          type: string
+        weatherNote:
+          type: string
+      required:
+        - dayNumber
+        - theme
+        - morning
+        - afternoon
+        - evening
+        - totalSteps
+        - totalWalkingMinutes
+        - activeHours
+        - estimatedCostLow
+        - estimatedCostHigh
+        - currency
+        - restaurants
+        - transportOptions
+        - sideTrips
+
+    GeneratedItinerary:
+      type: object
+      properties:
+        title:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        days:
+          type: number
+        travelMonth:
+          type: string
+        overview:
+          type: string
+        seniorFriendlyScore:
+          type: number
+        seniorFriendlyNotes:
+          type: string
+        totalEstimatedCostLow:
+          type: number
+        totalEstimatedCostHigh:
+          type: number
+        currency:
+          type: string
+        dayPlans:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayPlan"
+        weatherInfo:
+          type: string
+        bestTimeToVisit:
+          type: string
+        emergencyNumbers:
+          type: string
+      required:
+        - title
+        - city
+        - country
+        - days
+        - travelMonth
+        - overview
+        - seniorFriendlyScore
+        - totalEstimatedCostLow
+        - totalEstimatedCostHigh
+        - currency
+        - dayPlans
+
+    Destination:
+      type: object
+      properties:
+        id:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        description:
+          type: string
+        seniorFriendlyScore:
+          type: number
+        highlights:
+          type: array
+          items:
+            type: string
+        bestMonths:
+          type: array
+          items:
+            type: string
+        terrain:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - city
+        - country
+        - description
+        - seniorFriendlyScore
+        - highlights
+        - bestMonths
+        - terrain

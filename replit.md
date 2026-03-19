@@ -94,3 +94,36 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+### `artifacts/mobile` (`@workspace/mobile`)
+
+Expo React Native mobile app for SeniorTravel. 
+
+**App:** Senior-first travel app with AI-powered itinerary generation (3–7 days) for senior travelers.
+
+**Design:** Deep forest green (#1A6B4A) primary + warm amber (#E8A951) accent; Inter font family; light background #F8F9FA.
+
+**Key screens:**
+- `app/onboarding.tsx` — 4-step onboarding (pace, interests, diet/budget, accessibility)
+- `app/(tabs)/index.tsx` — Explore screen with search and destination cards
+- `app/(tabs)/saved.tsx` — Saved itineraries list
+- `app/(tabs)/profile.tsx` — Profile/preferences settings
+- `app/itinerary/generate.tsx` — Itinerary generator form (modal)
+- `app/itinerary/[id].tsx` — Full itinerary detail view
+- `app/itinerary/day/[dayId].tsx` — Day detail view with tabs
+
+**Contexts:**
+- `context/PreferencesContext.tsx` — User travel preferences (pace, interests, dietary, budget, accessibility) persisted in AsyncStorage
+- `context/SavedItinerariesContext.tsx` — Saved itineraries persisted in AsyncStorage
+
+**API integration:**
+- Uses `EXPO_PUBLIC_DOMAIN` env var for API base URL (`https://${EXPO_PUBLIC_DOMAIN}`)
+- AI itinerary generation: `POST /api/itineraries/generate`
+- Destinations: `GET /api/destinations`, `GET /api/destinations/search`
+
+**API Server routes:**
+- `POST /api/itineraries/generate` — AI itinerary generation via OpenAI gpt-5.2
+- `GET/POST /api/itineraries` — CRUD for stored itineraries
+- `GET /api/destinations` — 12 hardcoded senior-friendly destinations
+- `GET /api/destinations/search?query=` — Search destinations
+- `GET /api/healthz` — Health check
