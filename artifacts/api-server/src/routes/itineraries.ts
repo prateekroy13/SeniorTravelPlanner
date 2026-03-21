@@ -29,6 +29,7 @@ function buildPrompt(body: {
   days: number;
   travelMonth: string;
   likedAttractions?: string[];
+  likedRestaurants?: string[];
   preferences: {
     pace: string;
     maxStepsPerDay?: number;
@@ -40,7 +41,12 @@ function buildPrompt(body: {
 }) {
   const likedSection =
     body.likedAttractions && body.likedAttractions.length > 0
-      ? `\nMUST INCLUDE these specific attractions the traveler loved (they swiped right on them): ${body.likedAttractions.join(", ")}. Try to include at least these in the itinerary, spread across appropriate days.\n`
+      ? `\nMUST INCLUDE these specific attractions the traveler loved (they swiped right on them): ${body.likedAttractions.join(", ")}. Include these in the itinerary spread across appropriate days.\n`
+      : "";
+
+  const restaurantSection =
+    body.likedRestaurants && body.likedRestaurants.length > 0
+      ? `\nMUST INCLUDE these specific restaurants the traveler loved for their meals: ${body.likedRestaurants.join(", ")}. Schedule these for lunch or dinner across the appropriate days — do not cluster them all on one day.\n`
       : "";
 
   return `Generate a ${body.days}-day itinerary for ${body.city}, ${body.country} in ${body.travelMonth}.
@@ -51,7 +57,7 @@ Traveler preferences:
 - Dietary needs: ${body.preferences.dietaryNeeds?.join(", ") || "none specified"}
 - Interests: ${body.preferences.interests?.join(", ") || "culture, history, food"}
 - Budget level: ${body.preferences.budgetLevel || "mid"}
-- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}
+- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}
 
 Return a JSON object with this exact structure:
 {
@@ -130,14 +136,14 @@ Return a JSON object with this exact structure:
 
 router.post("/itineraries/generate", async (req: Request, res: Response) => {
   try {
-    const { city, country, days, travelMonth, preferences, likedAttractions } = req.body;
+    const { city, country, days, travelMonth, preferences, likedAttractions, likedRestaurants } = req.body;
 
     if (!city || !country || !days || !travelMonth || !preferences) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
 
-    const prompt = buildPrompt({ city, country, days, travelMonth, preferences, likedAttractions });
+    const prompt = buildPrompt({ city, country, days, travelMonth, preferences, likedAttractions, likedRestaurants });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",

@@ -272,4 +272,107 @@ router.get("/destinations/:id/attractions", (req: Request, res: Response) => {
   res.json(getDefaultAttractions(dest));
 });
 
+interface Restaurant {
+  id: string;
+  name: string;
+  cuisine: string;
+  priceLevel: 1 | 2 | 3;
+  specialty: string;
+  description: string;
+  seniorScore: number;
+  mealType: "lunch" | "dinner" | "both";
+  emoji: string;
+  gradient: [string, string];
+}
+
+const RESTAURANTS: Record<string, Restaurant[]> = {
+  lisbon: [
+    { id: "a-cevicheria", name: "A Cevicheria", cuisine: "Portuguese Fusion", priceLevel: 2, specialty: "Octopus ceviche", description: "Playful, seafood-forward spot in Príncipe Real. No reservations but arrives early — worth every minute.", seniorScore: 8.5, mealType: "lunch", emoji: "🐙", gradient: ["#1A5C7B", "#0D3A4E"] },
+    { id: "solar-dos-presuntos", name: "Solar dos Presuntos", cuisine: "Traditional Portuguese", priceLevel: 2, specialty: "Bacalhau à Brás (salted cod)", description: "Beloved family-run Lisbon institution since 1976. Warm, unhurried atmosphere — perfect for a long lunch.", seniorScore: 9.5, mealType: "both", emoji: "🐟", gradient: ["#7B3A1A", "#4E2510"] },
+    { id: "tasca-do-chico", name: "Tasca do Chico", cuisine: "Fado & Traditional", priceLevel: 1, specialty: "Caldo verde soup", description: "Tiny tavern with live fado music most evenings. Hearty, affordable Portuguese classics. Book ahead.", seniorScore: 9.0, mealType: "dinner", emoji: "🎵", gradient: ["#6B1A4A", "#4A1035"] },
+    { id: "can-the-can", name: "Can the Can", cuisine: "Portuguese Conserva", priceLevel: 1, specialty: "Tinned sardine tasting board", description: "Playful spot dedicated to Portugal's famous tinned fish heritage. Light, shareable, and very easy on the feet.", seniorScore: 8.8, mealType: "lunch", emoji: "🥫", gradient: ["#B8520A", "#8B3A06"] },
+    { id: "belcanto", name: "Belcanto", cuisine: "Fine Dining Portuguese", priceLevel: 3, specialty: "Garden of the Goose That Laid the Golden Eggs", description: "Two Michelin stars. Chef José Avillez's temple to modern Portuguese cuisine. An unforgettable evening.", seniorScore: 8.0, mealType: "dinner", emoji: "⭐", gradient: ["#1A4A2E", "#0D3020"] },
+    { id: "cervejaria-ramiro", name: "Cervejaria Ramiro", cuisine: "Seafood Beerhouse", priceLevel: 2, specialty: "Tiger prawns & percebes", description: "Lisbon's most celebrated shellfish restaurant. Loud, joyful, and the freshest seafood in the city.", seniorScore: 8.2, mealType: "both", emoji: "🦐", gradient: ["#0D4A6B", "#083044"] },
+    { id: "cafe-a-brasileira", name: "Café A Brasileira", cuisine: "Historic Café", priceLevel: 1, specialty: "Bica coffee & pastel de nata", description: "Lisbon's most iconic café since 1905. Sit at the marble counter or terrace and watch the world go by.", seniorScore: 9.8, mealType: "lunch", emoji: "☕", gradient: ["#5C3A1A", "#3A2510"] },
+  ],
+  rome: [
+    { id: "tonnarello", name: "Da Enzo al 29", cuisine: "Roman Trattoria", priceLevel: 1, specialty: "Cacio e pepe", description: "Classic Trastevere trattoria, cash only. Portions are enormous, the cacio e pepe is legendary.", seniorScore: 9.2, mealType: "both", emoji: "🍝", gradient: ["#7B3A1A", "#4E2510"] },
+    { id: "il-sorpasso", name: "Il Sorpasso", cuisine: "Roman Bistro", priceLevel: 2, specialty: "Supplì & aperitivo boards", description: "Relaxed, all-day restaurant near the Vatican. Great for a long lunch with no rush.", seniorScore: 8.8, mealType: "lunch", emoji: "🍷", gradient: ["#5C1A3A", "#3A1025"] },
+    { id: "pierluigi", name: "Ristorante Pierluigi", cuisine: "Seafood Italian", priceLevel: 3, specialty: "Branzino in salt crust", description: "Elegant Piazza de' Ricci setting. Superb seafood with attentive service and a beautiful terrace.", seniorScore: 9.0, mealType: "dinner", emoji: "🐟", gradient: ["#1A3A5C", "#0D2540"] },
+    { id: "flavio-velavevodetto", name: "Flavio al Velavevodetto", cuisine: "Roman Trattoria", priceLevel: 1, specialty: "Abbacchio alla romana (lamb)", description: "Built into the ancient Pyramid of Cestius neighbourhood. Authentic Roman recipes, enormous servings.", seniorScore: 8.5, mealType: "both", emoji: "🍖", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "roscioli", name: "Roscioli", cuisine: "Deli & Wine Bar", priceLevel: 2, specialty: "Truffle pasta & artisan charcuterie", description: "Part deli, part restaurant. Outstanding cured meats, cheese, and pasta in a warm, intimate setting.", seniorScore: 9.3, mealType: "lunch", emoji: "🧀", gradient: ["#4A2E1A", "#2E1C0D"] },
+    { id: "la-pergola", name: "La Pergola", cuisine: "Fine Dining Italian", priceLevel: 3, specialty: "Roma-Antica tasting menu", description: "Rome's only three Michelin-star restaurant. Panoramic terrace views. A truly special occasion dinner.", seniorScore: 8.5, mealType: "dinner", emoji: "⭐", gradient: ["#1A4A2E", "#0D3020"] },
+  ],
+  kyoto: [
+    { id: "kikunoi", name: "Kikunoi", cuisine: "Kaiseki", priceLevel: 3, specialty: "Seasonal kaiseki tasting menu", description: "Third-generation kaiseki master Murata Yoshihiro. A transcendent, 3-hour journey through Japanese cuisine.", seniorScore: 8.5, mealType: "dinner", emoji: "🍱", gradient: ["#1A5C3A", "#0D3A22"] },
+    { id: "nishiki-dori", name: "Nishiki Market Stalls", cuisine: "Street Food", priceLevel: 1, specialty: "Matcha mochi & grilled tofu", description: "Graze through 400 years of food history. Perfect for a light standing lunch with countless flavours.", seniorScore: 9.0, mealType: "lunch", emoji: "🍡", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "tousuiro", name: "Tousuiro", cuisine: "Tofu Kaiseki", priceLevel: 2, specialty: "Yudofu (hot tofu) course", description: "Exquisite tofu-focused kaiseki in a traditional machiya. Gentle flavours, beautiful presentation, tatami seating with cushion option.", seniorScore: 9.2, mealType: "lunch", emoji: "🫙", gradient: ["#2E5C3A", "#1A3A22"] },
+    { id: "ippudo-kyoto", name: "Ippudo Kyoto", cuisine: "Ramen", priceLevel: 1, specialty: "Shiromaru tonkotsu ramen", description: "Reliable, warming tonkotsu ramen. Counter seating, fast service, great when feet are tired.", seniorScore: 8.8, mealType: "both", emoji: "🍜", gradient: ["#7B3A1A", "#4E2510"] },
+    { id: "izuju", name: "Izuju", cuisine: "Sushi & Oshizushi", priceLevel: 2, specialty: "Saba oshizushi (pressed mackerel sushi)", description: "Over 100 years old, near Yasaka Shrine. Famous for pressed sushi — a Kyoto specialty rarely seen elsewhere.", seniorScore: 9.4, mealType: "lunch", emoji: "🍣", gradient: ["#1A3A5C", "#0D2540"] },
+    { id: "mizai", name: "Mizai", cuisine: "Kaiseki Fine Dining", priceLevel: 3, specialty: "Winter kaiseki with local wagyu", description: "Intimate, deeply personal dining at the edge of Nishiki. Only 12 seats. Pure Kyoto elegance.", seniorScore: 8.8, mealType: "dinner", emoji: "🥩", gradient: ["#3A1A4A", "#25102E"] },
+  ],
+  amsterdam: [
+    { id: "rijsel", name: "Rijsel", cuisine: "French-Belgian Bistro", priceLevel: 2, specialty: "Roast chicken with frites", description: "Long-running Amsterdam favourite. No-fuss French classics, generous portions, perfect for a relaxed dinner.", seniorScore: 9.2, mealType: "dinner", emoji: "🍗", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "de-kas", name: "Restaurant De Kas", cuisine: "Farm-to-Table", priceLevel: 3, specialty: "Seasonal greenhouse tasting menu", description: "Set inside a 1920s greenhouse. Vegetables picked that morning, exquisite preparation, magical atmosphere.", seniorScore: 9.0, mealType: "both", emoji: "🌿", gradient: ["#1A5C3A", "#0D3A22"] },
+    { id: "brouwerij-t-ij", name: "Brouwerij 't IJ", cuisine: "Dutch Pub Food", priceLevel: 1, specialty: "Bitterballen & local craft beer", description: "Brewery inside a windmill. Bitterballen (fried beef croquettes) with a local beer — an Amsterdam tradition.", seniorScore: 8.5, mealType: "lunch", emoji: "🍺", gradient: ["#7B5C1A", "#4E3A10"] },
+    { id: "han", name: "Han Bing", cuisine: "Chinese-Dutch Fusion", priceLevel: 2, specialty: "Peking duck pancakes", description: "Dutch-born chef's creative take on Chinese cuisine. Calm, seated dining with attentive service.", seniorScore: 8.8, mealType: "dinner", emoji: "🦆", gradient: ["#1A3A5C", "#0D2540"] },
+    { id: "pancakes-amsterdam", name: "Pancakes Amsterdam", cuisine: "Dutch Pancakes", priceLevel: 1, specialty: "Stroopwafel & apple pancake", description: "Amsterdam's legendary pancake house. Sweet and savoury options, generous portions, loved by all ages.", seniorScore: 9.5, mealType: "both", emoji: "🥞", gradient: ["#B8520A", "#8B3A06"] },
+  ],
+  barcelona: [
+    { id: "bar-la-mar", name: "Bar La Mar", cuisine: "Catalan Tapas", priceLevel: 1, specialty: "Pan con tomate & jamón ibérico", description: "Neighbourhood gem. Simple, perfect tapas at a marble counter. The pan con tomate is a revelation.", seniorScore: 9.0, mealType: "both", emoji: "🍅", gradient: ["#B8520A", "#8B3A06"] },
+    { id: "tickets", name: "Tickets", cuisine: "Avant-Garde Tapas", priceLevel: 3, specialty: "Liquid olive oil spherification", description: "Albert Adrià's legendary tapas bar. Innovative, playful, extraordinary. Book months ahead.", seniorScore: 8.0, mealType: "dinner", emoji: "⭐", gradient: ["#5C1A3A", "#3A1025"] },
+    { id: "la-pepita", name: "La Pepita", cuisine: "Modern Catalan", priceLevel: 2, specialty: "Bombas de la Barceloneta", description: "Charming corner restaurant with daily changing Catalan market menu. Relaxed, seated, very senior-friendly.", seniorScore: 9.3, mealType: "lunch", emoji: "🥘", gradient: ["#1A5C3A", "#0D3A22"] },
+    { id: "el-xampanyet", name: "El Xampanyet", cuisine: "Catalan Tapas Bar", priceLevel: 1, specialty: "House cava & anchovy montadito", description: "Since 1929, near the Picasso Museum. Stand at the bar or find a table for cava and anchovies.", seniorScore: 8.5, mealType: "lunch", emoji: "🥂", gradient: ["#7B5C1A", "#4E3A10"] },
+    { id: "lasarte", name: "Lasarte", cuisine: "Basque Fine Dining", priceLevel: 3, specialty: "Kokotxas with green pil-pil sauce", description: "Three Michelin stars. Martin Berasategui's Barcelona outpost. Extraordinary Basque-inspired haute cuisine.", seniorScore: 8.5, mealType: "dinner", emoji: "🐟", gradient: ["#1A3A5C", "#0D2540"] },
+  ],
+  vienna: [
+    { id: "figlmueller", name: "Figlmüller", cuisine: "Viennese", priceLevel: 2, specialty: "Wiener Schnitzel (the original)", description: "Vienna's most iconic schnitzel since 1905. The schnitzel overhangs the plate. A Viennese institution.", seniorScore: 9.5, mealType: "both", emoji: "🥩", gradient: ["#7B5C1A", "#4E3A10"] },
+    { id: "cafe-central", name: "Café Central", cuisine: "Viennese Coffeehouse", priceLevel: 2, specialty: "Melange coffee & Apfelstrudel", description: "Grand palatial café where Freud and Trotsky once argued. Sit for hours — no one will rush you.", seniorScore: 10.0, mealType: "both", emoji: "☕", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "meixner", name: "Gasthaus Meixner", cuisine: "Traditional Viennese", priceLevel: 1, specialty: "Tafelspitz (boiled beef)", description: "Hidden neighbourhood gem. Locals-only prices, massive portions of boiled beef with horseradish and rösti.", seniorScore: 9.0, mealType: "both", emoji: "🍲", gradient: ["#4A3A1A", "#2E2510"] },
+    { id: "steirereck", name: "Steirereck im Stadtpark", cuisine: "Austrian Fine Dining", priceLevel: 3, specialty: "Lungauer Almkäse cheese course", description: "Austria's greatest restaurant. Set in Stadtpark, one Michelin star, stunning Austrian produce, full accessibility.", seniorScore: 9.3, mealType: "dinner", emoji: "⭐", gradient: ["#1A5C3A", "#0D3A22"] },
+    { id: "zur-herknerin", name: "Zum Wohl", cuisine: "Austrian Wine Bar", priceLevel: 2, specialty: "Grüner Veltliner & charcuterie board", description: "Excellent Austrian natural wine bar in the 1st district. Perfect for an afternoon glass and small plates.", seniorScore: 9.1, mealType: "lunch", emoji: "🍷", gradient: ["#5C1A3A", "#3A1025"] },
+  ],
+  singapore: [
+    { id: "maxwell-hawker", name: "Maxwell Food Centre", cuisine: "Hawker Centre", priceLevel: 1, specialty: "Tian Tian chicken rice", description: "Singapore's most famous hawker centre. Sit anywhere, order from any stall. Chicken rice is unmissable.", seniorScore: 9.9, mealType: "both", emoji: "🍚", gradient: ["#B8520A", "#8B3A06"] },
+    { id: "jumbo-seafood", name: "JUMBO Seafood", cuisine: "Singapore Seafood", priceLevel: 2, specialty: "Chilli crab with mantou buns", description: "The definitive Singapore chilli crab experience. Bibs provided. Messy, joyful, and utterly delicious.", seniorScore: 9.2, mealType: "dinner", emoji: "🦀", gradient: ["#7B1A1A", "#4E1010"] },
+    { id: "blue-ginger", name: "The Blue Ginger", cuisine: "Peranakan", priceLevel: 2, specialty: "Ayam buah keluak (chicken & black nut)", description: "Best Peranakan (Straits Chinese) restaurant in Singapore. Richly spiced, deeply traditional, a true cultural meal.", seniorScore: 9.0, mealType: "both", emoji: "🌶️", gradient: ["#5C1A3A", "#3A1025"] },
+    { id: "odette", name: "Odette", cuisine: "Modern French", priceLevel: 3, specialty: "Seasonal French tasting menu", description: "Asia's best restaurant for several years. Three Michelin stars. Set in the National Gallery — art and cuisine united.", seniorScore: 8.8, mealType: "dinner", emoji: "⭐", gradient: ["#1A4A5C", "#0D2E3A"] },
+    { id: "lau-pa-sat", name: "Lau Pa Sat Festival Market", cuisine: "Hawker Satay", priceLevel: 1, specialty: "Satay skewers with peanut sauce", description: "Victorian cast-iron market, evening satay street. Pull up a plastic stool under the stars — pure Singapore magic.", seniorScore: 9.5, mealType: "dinner", emoji: "🍢", gradient: ["#7B5C1A", "#4E3A10"] },
+  ],
+  prague: [
+    { id: "lokál", name: "Lokál", cuisine: "Czech Pub", priceLevel: 1, specialty: "Tank Pilsner Urquell & svíčková", description: "Czech beer-hall perfection. Unpasteurised tank beer, hearty dumplings with beef. Long communal tables, very welcoming.", seniorScore: 9.0, mealType: "both", emoji: "🍺", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "la-degustation", name: "La Degustation Bohême Bourgeoise", cuisine: "Czech Fine Dining", priceLevel: 3, specialty: "7-course Czech heritage tasting menu", description: "Michelin star, historical Czech recipes elevated to haute cuisine. An unforgettable evening in the Old Town.", seniorScore: 8.5, mealType: "dinner", emoji: "⭐", gradient: ["#1A3A5C", "#0D2540"] },
+    { id: "eska", name: "Eska", cuisine: "Modern Czech Bakery", priceLevel: 2, specialty: "Sourdough with cultured butter & fermenti", description: "Pioneer of the Prague food scene. Stunning breakfast/lunch with house-fermented everything and exceptional bread.", seniorScore: 9.2, mealType: "lunch", emoji: "🥖", gradient: ["#5C4A1A", "#3A2E10"] },
+    { id: "mlejnice", name: "U Mlejnice", cuisine: "Czech Tavern", priceLevel: 1, specialty: "Roasted duck with red cabbage & knedlíky", description: "Medieval cellar tavern near Old Town Square. Dark, atmospheric, incredibly affordable. Duck and dumplings are superb.", seniorScore: 8.8, mealType: "dinner", emoji: "🦆", gradient: ["#3A1A1A", "#250D0D"] },
+    { id: "lehka-hlava", name: "Lehká Hlava (Clear Head)", cuisine: "Vegetarian Czech", priceLevel: 2, specialty: "Smoked tofu goulash with bread dumplings", description: "Prague's best vegetarian restaurant. Whimsical décor, creative takes on Czech classics without meat.", seniorScore: 9.0, mealType: "both", emoji: "🌱", gradient: ["#1A5C3A", "#0D3A22"] },
+  ],
+};
+
+router.get("/destinations/:id/restaurants", (req: Request, res: Response) => {
+  const { id } = req.params;
+  const budget = (req.query.budget as string) || "mid";
+  const restaurants = RESTAURANTS[id];
+
+  if (!restaurants) {
+    const dest = DESTINATIONS.find((d) => d.id === id);
+    if (!dest) {
+      res.status(404).json({ error: "Destination not found" });
+      return;
+    }
+    res.json([]);
+    return;
+  }
+
+  const priceLevelMap: Record<string, number> = { budget: 1, mid: 2, luxury: 3 };
+  const preferredLevel = priceLevelMap[budget] ?? 2;
+
+  const sorted = [...restaurants].sort((a, b) => {
+    const aDist = Math.abs(a.priceLevel - preferredLevel);
+    const bDist = Math.abs(b.priceLevel - preferredLevel);
+    return aDist - bDist;
+  });
+
+  res.json(sorted);
+});
+
 export default router;

@@ -40,6 +40,7 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="swipe/[destinationId]" options={{ animation: "slide_from_bottom" }} />
+      <Stack.Screen name="food-swipe/[destinationId]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="itinerary/generate" options={{ presentation: "modal" }} />
       <Stack.Screen name="itinerary/[id]" />
       <Stack.Screen name="itinerary/day/[dayId]" />

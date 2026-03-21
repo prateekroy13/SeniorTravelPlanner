@@ -31,7 +31,7 @@ const CURRENT_MONTH = MONTHS[new Date().getMonth()];
 
 export default function GenerateScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ city?: string; country?: string; likedAttractions?: string }>();
+  const params = useLocalSearchParams<{ city?: string; country?: string; likedAttractions?: string; likedRestaurants?: string }>();
   const { preferences } = usePreferences();
 
   const [city, setCity] = useState(params.city || "");
@@ -42,6 +42,10 @@ export default function GenerateScreen() {
 
   const likedAttractions = params.likedAttractions
     ? params.likedAttractions.split(",").filter(Boolean)
+    : [];
+
+  const likedRestaurants = params.likedRestaurants
+    ? params.likedRestaurants.split(",").filter(Boolean)
     : [];
 
   const canGenerate = city.trim().length > 1 && country.trim().length > 1;
@@ -61,6 +65,7 @@ export default function GenerateScreen() {
           days,
           travelMonth: month,
           likedAttractions,
+          likedRestaurants,
           preferences: {
             pace: preferences.pace,
             maxStepsPerDay: preferences.maxStepsPerDay,
@@ -128,24 +133,51 @@ export default function GenerateScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {likedAttractions.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.likedHeader}>
-              <Feather name="heart" size={16} color="#FF6B9D" />
-              <Text style={styles.likedTitle}>
-                {likedAttractions.length} place{likedAttractions.length !== 1 ? "s" : ""} you loved
-              </Text>
-            </View>
-            <Text style={styles.likedSubtitle}>
-              These will be included in your itinerary
-            </Text>
-            <View style={styles.likedList}>
-              {likedAttractions.map((name) => (
-                <View key={name} style={styles.likedPill}>
-                  <Feather name="heart" size={11} color="#FF6B9D" />
-                  <Text style={styles.likedPillText} numberOfLines={1}>{name}</Text>
+        {(likedAttractions.length > 0 || likedRestaurants.length > 0) && (
+          <View style={styles.swipeSection}>
+            {likedAttractions.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.likedHeader}>
+                  <Feather name="map-pin" size={15} color="#FF6B9D" />
+                  <Text style={styles.likedTitle}>
+                    {likedAttractions.length} attraction{likedAttractions.length !== 1 ? "s" : ""} you loved
+                  </Text>
                 </View>
-              ))}
+                <View style={styles.likedList}>
+                  {likedAttractions.map((name) => (
+                    <View key={name} style={styles.likedPill}>
+                      <Feather name="heart" size={11} color="#FF6B9D" />
+                      <Text style={styles.likedPillText} numberOfLines={1}>{name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {likedRestaurants.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.likedHeader}>
+                  <Text style={{ fontSize: 15 }}>🍽️</Text>
+                  <Text style={styles.likedTitle}>
+                    {likedRestaurants.length} restaurant{likedRestaurants.length !== 1 ? "s" : ""} you loved
+                  </Text>
+                </View>
+                <View style={styles.likedList}>
+                  {likedRestaurants.map((name) => (
+                    <View key={name} style={[styles.likedPill, styles.likedPillFood]}>
+                      <Feather name="coffee" size={11} color={Colors.light.accent} />
+                      <Text style={[styles.likedPillText, styles.likedPillTextFood]} numberOfLines={1}>{name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            <View style={styles.swipeSummaryNote}>
+              <Feather name="check-circle" size={14} color={Colors.light.primary} />
+              <Text style={styles.swipeSummaryText}>
+                All your selections will be woven into the itinerary
+              </Text>
             </View>
           </View>
         )}
@@ -342,6 +374,26 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     marginTop: -4,
   },
+  swipeSection: {
+    gap: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.borderLight,
+  },
+  swipeSummaryNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 4,
+  },
+  swipeSummaryText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    flex: 1,
+  },
   likedList: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -358,9 +410,16 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
   },
+  likedPillFood: {
+    backgroundColor: `${Colors.light.accent}14`,
+    borderColor: `${Colors.light.accent}44`,
+  },
   likedPillText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+  },
+  likedPillTextFood: {
     color: Colors.light.text,
   },
   sectionTitle: {
