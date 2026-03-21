@@ -99,7 +99,13 @@ export default function SwipeScreen() {
     });
   };
 
-  const handleBack = () => router.back();
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/");
+    }
+  };
 
   if (isLoading) {
     return (
