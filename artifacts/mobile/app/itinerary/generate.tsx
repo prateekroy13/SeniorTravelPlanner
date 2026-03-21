@@ -31,7 +31,7 @@ const CURRENT_MONTH = MONTHS[new Date().getMonth()];
 
 export default function GenerateScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ city?: string; country?: string }>();
+  const params = useLocalSearchParams<{ city?: string; country?: string; likedAttractions?: string }>();
   const { preferences } = usePreferences();
 
   const [city, setCity] = useState(params.city || "");
@@ -39,6 +39,10 @@ export default function GenerateScreen() {
   const [days, setDays] = useState(5);
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const likedAttractions = params.likedAttractions
+    ? params.likedAttractions.split(",").filter(Boolean)
+    : [];
 
   const canGenerate = city.trim().length > 1 && country.trim().length > 1;
 
@@ -56,6 +60,7 @@ export default function GenerateScreen() {
           country: country.trim(),
           days,
           travelMonth: month,
+          likedAttractions,
           preferences: {
             pace: preferences.pace,
             maxStepsPerDay: preferences.maxStepsPerDay,
@@ -123,6 +128,28 @@ export default function GenerateScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {likedAttractions.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.likedHeader}>
+              <Feather name="heart" size={16} color="#FF6B9D" />
+              <Text style={styles.likedTitle}>
+                {likedAttractions.length} place{likedAttractions.length !== 1 ? "s" : ""} you loved
+              </Text>
+            </View>
+            <Text style={styles.likedSubtitle}>
+              These will be included in your itinerary
+            </Text>
+            <View style={styles.likedList}>
+              {likedAttractions.map((name) => (
+                <View key={name} style={styles.likedPill}>
+                  <Feather name="heart" size={11} color="#FF6B9D" />
+                  <Text style={styles.likedPillText} numberOfLines={1}>{name}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Destination</Text>
           <View style={styles.inputGroup}>
@@ -299,6 +326,43 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   section: { gap: 10 },
+  likedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  likedTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: Colors.light.text,
+  },
+  likedSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: -4,
+  },
+  likedList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  likedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,107,157,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,107,157,0.3)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  likedPillText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+  },
   sectionTitle: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",

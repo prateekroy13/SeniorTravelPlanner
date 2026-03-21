@@ -165,8 +165,8 @@ export default function ExploreScreen() {
                   variant="horizontal"
                   onPress={(d) =>
                     router.push({
-                      pathname: "/itinerary/generate",
-                      params: { city: d.city, country: d.country },
+                      pathname: "/swipe/[destinationId]",
+                      params: { destinationId: d.id, city: d.city, country: d.country },
                     })
                   }
                 />
@@ -177,7 +177,7 @@ export default function ExploreScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Senior-Friendly Destinations</Text>
-                  <Text style={styles.sectionSub}>Rated for accessibility & comfort</Text>
+                  <Text style={styles.sectionSub}>Tap a city to discover & swipe top spots</Text>
                 </View>
 
                 {isLoading ? (
@@ -198,8 +198,8 @@ export default function ExploreScreen() {
                         destination={dest}
                         onPress={(d) =>
                           router.push({
-                            pathname: "/itinerary/generate",
-                            params: { city: d.city, country: d.country },
+                            pathname: "/swipe/[destinationId]",
+                            params: { destinationId: d.id, city: d.city, country: d.country },
                           })
                         }
                       />
@@ -216,8 +216,8 @@ export default function ExploreScreen() {
                       key={dest.id}
                       onPress={() =>
                         router.push({
-                          pathname: "/itinerary/generate",
-                          params: { city: dest.city, country: dest.country },
+                          pathname: "/swipe/[destinationId]",
+                          params: { destinationId: dest.id, city: dest.city, country: dest.country },
                         })
                       }
                       activeOpacity={0.88}
