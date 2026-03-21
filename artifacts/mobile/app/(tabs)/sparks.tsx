@@ -161,16 +161,22 @@ function SparksOnboarding({
   availableCities,
   onConfirm,
   onShowLatest,
+  onCancel,
+  initialCities = [],
+  isEditing = false,
 }: {
   availableCities: string[];
   onConfirm: (cities: string[]) => void;
   onShowLatest: () => void;
+  onCancel?: () => void;
+  initialCities?: string[];
+  isEditing?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 84 : insets.bottom;
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(initialCities);
   const inputRef = useRef<TextInput>(null);
 
   const allCities = useMemo(() => {
@@ -200,25 +206,41 @@ function SparksOnboarding({
         style={StyleSheet.absoluteFill}
       />
 
+      {isEditing && onCancel && (
+        <View style={onbStyles.editHeader}>
+          <TouchableOpacity onPress={onCancel} style={onbStyles.cancelBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={20} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+          <Text style={onbStyles.editHeaderTitle}>Edit Destinations</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={[onbStyles.scroll, { paddingBottom: bottomInset + 32 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={onbStyles.iconWrap}>
-          <LinearGradient
-            colors={[Colors.light.primary, "#0D4A33"]}
-            style={onbStyles.iconCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={onbStyles.iconText}>⚡</Text>
-          </LinearGradient>
-        </View>
+        {!isEditing && (
+          <View style={onbStyles.iconWrap}>
+            <LinearGradient
+              colors={[Colors.light.primary, "#0D4A33"]}
+              style={onbStyles.iconCircle}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={onbStyles.iconText}>⚡</Text>
+            </LinearGradient>
+          </View>
+        )}
 
-        <Text style={onbStyles.title}>Welcome to Sparks</Text>
+        <Text style={onbStyles.title}>
+          {isEditing ? "Change your cities" : "Welcome to Sparks"}
+        </Text>
         <Text style={onbStyles.subtitle}>
-          Real moments shared by fellow senior travelers.{"\n"}Where would you like to explore?
+          {isEditing
+            ? "Add or remove destinations below, then save."
+            : "Real moments shared by fellow senior travelers.\nWhere would you like to explore?"}
         </Text>
 
         <View style={onbStyles.searchBox}>
@@ -311,6 +333,10 @@ function SparksOnboarding({
               <Text style={onbStyles.exploreBtnText}>
                 {selected.length === 0
                   ? "Select a destination first"
+                  : isEditing
+                  ? selected.length === 1
+                    ? `Save — ${selected[0]}`
+                    : `Save — ${selected.length} cities`
                   : selected.length === 1
                   ? `Explore ${selected[0]} →`
                   : `Explore ${selected.length} cities →`}
@@ -371,6 +397,7 @@ export default function SparksScreen() {
   const bottomInset = Platform.OS === "web" ? 84 : insets.bottom;
 
   const [selectedCity, setSelectedCity] = useState("All");
+  const [editing, setEditing] = useState(false);
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["sparks", deviceId],
@@ -448,12 +475,24 @@ export default function SparksScreen() {
     );
   }
 
-  if (pref === null) {
+  if (pref === null || editing) {
+    const currentCities = (pref && pref !== "loading" && pref.mode === "cities") ? pref.cities : [];
     return (
       <SparksOnboarding
         availableCities={availableCities}
-        onConfirm={(cities) => { savePref({ mode: "cities", cities }); setSelectedCity("All"); }}
-        onShowLatest={() => { savePref({ mode: "latest" }); setSelectedCity("All"); }}
+        initialCities={editing ? currentCities : []}
+        isEditing={editing}
+        onConfirm={(cities) => {
+          savePref({ mode: "cities", cities });
+          setSelectedCity("All");
+          setEditing(false);
+        }}
+        onShowLatest={() => {
+          savePref({ mode: "latest" });
+          setSelectedCity("All");
+          setEditing(false);
+        }}
+        onCancel={editing ? () => setEditing(false) : undefined}
       />
     );
   }
@@ -474,7 +513,7 @@ export default function SparksScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.changeBtn}
-            onPress={() => { clearPref(); setSelectedCity("All"); }}
+            onPress={() => setEditing(true)}
             activeOpacity={0.75}
           >
             <Feather name="sliders" size={17} color="rgba(255,255,255,0.65)" />
@@ -673,6 +712,26 @@ const onbStyles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_500Medium",
     color: Colors.light.accent,
+  },
+  editHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  cancelBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editHeaderTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
 });
 
