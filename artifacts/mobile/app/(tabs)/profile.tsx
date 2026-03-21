@@ -6,33 +6,77 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Switch,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePreferences, Pace, BudgetLevel } from "@/context/PreferencesContext";
 import { useSavedItineraries } from "@/context/SavedItinerariesContext";
 
-const PACE_LABELS: Record<Pace, { label: string; desc: string; icon: string }> = {
-  easy: { label: "Easy", desc: "Gentle walks, frequent rests", icon: "coffee" },
-  moderate: { label: "Moderate", desc: "Comfortable pace", icon: "sun" },
-  active: { label: "Active", desc: "Full days of walking", icon: "activity" },
-};
+const PACE_OPTIONS: { value: Pace; label: string; subtitle: string; steps: string; icon: string }[] = [
+  {
+    value: "easy",
+    label: "Easy",
+    subtitle: "Gentle walks, frequent rests, minimal stairs",
+    steps: "2,000–4,000 steps/day",
+    icon: "coffee",
+  },
+  {
+    value: "moderate",
+    label: "Moderate",
+    subtitle: "Comfortable pace with regular breaks",
+    steps: "4,000–7,000 steps/day",
+    icon: "sun",
+  },
+  {
+    value: "active",
+    label: "Active",
+    subtitle: "Full days, good walking ability",
+    steps: "7,000–10,000 steps/day",
+    icon: "activity",
+  },
+];
 
-const BUDGET_LABELS: Record<BudgetLevel, string> = {
-  budget: "Budget",
-  mid: "Mid-Range",
-  luxury: "Luxury",
-};
+const BUDGET_OPTIONS: { value: BudgetLevel; label: string; desc: string; symbol: string }[] = [
+  { value: "budget", label: "Budget", desc: "Local cafes, affordable spots", symbol: "$" },
+  { value: "mid", label: "Mid-Range", desc: "Good quality, fair price", symbol: "$$" },
+  { value: "luxury", label: "Luxury", desc: "Premium dining & experiences", symbol: "$$$" },
+];
+
+const INTEREST_OPTIONS = [
+  { value: "culture", label: "Culture", icon: "book" },
+  { value: "food", label: "Food & Dining", icon: "coffee" },
+  { value: "nature", label: "Nature", icon: "feather" },
+  { value: "shopping", label: "Shopping", icon: "shopping-bag" },
+  { value: "art", label: "Art", icon: "image" },
+  { value: "architecture", label: "Architecture", icon: "home" },
+  { value: "religious", label: "Religious Sites", icon: "star" },
+  { value: "relaxation", label: "Relaxation", icon: "wind" },
+  { value: "music", label: "Music & Shows", icon: "music" },
+  { value: "photography", label: "Photography", icon: "camera" },
+];
+
+const DIETARY_OPTIONS = [
+  "Vegetarian", "Vegan", "Gluten-Free",
+  "Halal", "Kosher", "Nut Allergy",
+  "Dairy-Free", "Low-Sodium",
+];
+
+const ACCESS_OPTIONS: { value: string; label: string; icon: string }[] = [
+  { value: "no_stairs", label: "Avoid Stairs", icon: "trending-up" },
+  { value: "wheelchair", label: "Wheelchair", icon: "user" },
+  { value: "slow_pace", label: "Slow Pace", icon: "clock" },
+  { value: "no_hills", label: "Flat Terrain", icon: "minus" },
+  { value: "rest_breaks", label: "Frequent Breaks", icon: "pause-circle" },
+  { value: "medical_nearby", label: "Medical Nearby", icon: "heart" },
+];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { preferences, updatePreferences } = usePreferences();
   const { savedItineraries } = useSavedItineraries();
-  const [showPaceSheet, setShowPaceSheet] = useState(false);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const bottomPadding = Math.max(insets.bottom + 100, 120);
@@ -41,21 +85,44 @@ export default function ProfileScreen() {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       "Reset Setup",
-      "This will take you back through the initial setup. Your saved trips won't be affected.",
+      "This will restart the setup wizard. Your saved trips won't be affected.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Reset",
           style: "destructive",
-          onPress: async () => {
-            await updatePreferences({ hasCompletedOnboarding: false });
-          },
+          onPress: () => updatePreferences({ hasCompletedOnboarding: false }),
         },
       ]
     );
   };
 
-  const paceInfo = PACE_LABELS[preferences.pace];
+  const toggleInterest = async (val: string) => {
+    await Haptics.selectionAsync();
+    const current = preferences.interests;
+    const updated = current.includes(val)
+      ? current.filter((v) => v !== val)
+      : [...current, val];
+    updatePreferences({ interests: updated });
+  };
+
+  const toggleDietary = async (val: string) => {
+    await Haptics.selectionAsync();
+    const current = preferences.dietaryNeeds;
+    const updated = current.includes(val)
+      ? current.filter((v) => v !== val)
+      : [...current, val];
+    updatePreferences({ dietaryNeeds: updated });
+  };
+
+  const toggleAccess = async (val: string) => {
+    await Haptics.selectionAsync();
+    const current = preferences.accessibilityNeeds;
+    const updated = current.includes(val)
+      ? current.filter((v) => v !== val)
+      : [...current, val];
+    updatePreferences({ accessibilityNeeds: updated });
+  };
 
   return (
     <View style={styles.container}>
@@ -63,216 +130,220 @@ export default function ProfileScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.profileHeader, { paddingTop: topPadding + 20 }]}>
+        <View style={[styles.profileHeader, { paddingTop: topPadding + 16 }]}>
           <View style={styles.avatarRing}>
             <View style={styles.avatar}>
               <Feather name="user" size={28} color={Colors.light.primary} />
             </View>
           </View>
           <Text style={styles.name}>My Travel Profile</Text>
-          <Text style={styles.subname}>{savedItineraries.length} trip{savedItineraries.length !== 1 ? "s" : ""} planned</Text>
+          <Text style={styles.subname}>
+            {savedItineraries.length} trip{savedItineraries.length !== 1 ? "s" : ""} saved
+          </Text>
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard icon="map" label="Destinations" value={savedItineraries.length.toString()} />
-          <StatCard icon="activity" label="Pace" value={PACE_LABELS[preferences.pace].label} />
-          <StatCard icon="tag" label="Budget" value={BUDGET_LABELS[preferences.budgetLevel]} />
+          <StatChip icon="activity" label={PACE_OPTIONS.find(p => p.value === preferences.pace)?.label ?? "Moderate"} />
+          <StatChip icon="tag" label={BUDGET_OPTIONS.find(b => b.value === preferences.budgetLevel)?.label ?? "Mid-Range"} />
+          <StatChip icon="map" label={`${savedItineraries.length} trip${savedItineraries.length !== 1 ? "s" : ""}`} />
         </View>
 
-        <Section title="Travel Preferences">
-          <SettingRow
-            icon="zap"
-            label="Travel Pace"
-            value={paceInfo.label}
-            subtitle={paceInfo.desc}
-            onPress={() => setShowPaceSheet(true)}
-          />
-          <SettingRow
-            icon="tag"
-            label="Budget Level"
-            value={BUDGET_LABELS[preferences.budgetLevel]}
-            onPress={() => {
-              const levels: BudgetLevel[] = ["budget", "mid", "luxury"];
-              const current = levels.indexOf(preferences.budgetLevel);
-              const next = levels[(current + 1) % levels.length];
-              updatePreferences({ budgetLevel: next });
-              Haptics.selectionAsync();
-            }}
-          />
-          {preferences.interests.length > 0 && (
-            <View style={styles.tagsRow}>
-              <View style={styles.tagLabel}>
-                <Feather name="heart" size={16} color={Colors.light.primary} />
-                <Text style={styles.tagLabelText}>Interests</Text>
-              </View>
-              <View style={styles.chips}>
-                {preferences.interests.map((i) => (
-                  <View key={i} style={styles.chip}>
-                    <Text style={styles.chipText}>{i}</Text>
+        <SectionHeader title="Travel Pace" subtitle="How much walking are you comfortable with each day?" />
+        <View style={styles.paceGrid}>
+          {PACE_OPTIONS.map((opt) => {
+            const isActive = preferences.pace === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  const stepsMap: Record<Pace, number> = { easy: 3000, moderate: 6000, active: 9000 };
+                  updatePreferences({ pace: opt.value, maxStepsPerDay: stepsMap[opt.value] });
+                }}
+                activeOpacity={0.85}
+                style={[styles.paceCard, isActive && styles.paceCardActive]}
+              >
+                <View style={[styles.paceIconBox, isActive && styles.paceIconBoxActive]}>
+                  <Feather name={opt.icon as any} size={20} color={isActive ? "#fff" : Colors.light.primary} />
+                </View>
+                <View style={styles.paceText}>
+                  <View style={styles.paceLabelRow}>
+                    <Text style={[styles.paceLabel, isActive && styles.paceLabelActive]}>
+                      {opt.label}
+                    </Text>
+                    {isActive && (
+                      <View style={styles.selectedBadge}>
+                        <Feather name="check" size={11} color={Colors.light.primary} />
+                        <Text style={styles.selectedBadgeText}>Selected</Text>
+                      </View>
+                    )}
                   </View>
-                ))}
+                  <Text style={[styles.paceSubtitle, isActive && styles.paceSubtitleActive]}>
+                    {opt.subtitle}
+                  </Text>
+                  <Text style={[styles.paceSteps, isActive && styles.paceStepsActive]}>
+                    {opt.steps}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <SectionHeader title="Budget Level" subtitle="Guides restaurant and activity cost recommendations" />
+        <View style={styles.budgetRow}>
+          {BUDGET_OPTIONS.map((opt) => {
+            const isActive = preferences.budgetLevel === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  updatePreferences({ budgetLevel: opt.value });
+                }}
+                activeOpacity={0.85}
+                style={[styles.budgetCard, isActive && styles.budgetCardActive]}
+              >
+                <Text style={[styles.budgetSymbol, isActive && styles.budgetSymbolActive]}>
+                  {opt.symbol}
+                </Text>
+                <Text style={[styles.budgetLabel, isActive && styles.budgetLabelActive]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.budgetDesc, isActive && styles.budgetDescActive]}>
+                  {opt.desc}
+                </Text>
+                {isActive && (
+                  <View style={styles.budgetCheck}>
+                    <Feather name="check-circle" size={16} color={Colors.light.primary} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <SectionHeader title="Interests" subtitle="Tap to toggle — shapes your itinerary content" />
+        <View style={styles.chipGrid}>
+          {INTEREST_OPTIONS.map((opt) => {
+            const isActive = preferences.interests.includes(opt.value);
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => toggleInterest(opt.value)}
+                activeOpacity={0.8}
+                style={[styles.chip, isActive && styles.chipActive]}
+              >
+                <Feather name={opt.icon as any} size={13} color={isActive ? "#fff" : Colors.light.primary} />
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <SectionHeader title="Dietary Needs" subtitle="Tap to toggle — used for restaurant suggestions" />
+        <View style={styles.chipGrid}>
+          {DIETARY_OPTIONS.map((item) => {
+            const isActive = preferences.dietaryNeeds.includes(item);
+            return (
+              <TouchableOpacity
+                key={item}
+                onPress={() => toggleDietary(item)}
+                activeOpacity={0.8}
+                style={[styles.chip, isActive && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <SectionHeader title="Accessibility" subtitle="Tap to toggle — affects routing and venue suggestions" />
+        <View style={styles.accessGrid}>
+          {ACCESS_OPTIONS.map((opt) => {
+            const isActive = preferences.accessibilityNeeds.includes(opt.value);
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => toggleAccess(opt.value)}
+                activeOpacity={0.8}
+                style={[styles.accessCard, isActive && styles.accessCardActive]}
+              >
+                <View style={[styles.accessIcon, isActive && styles.accessIconActive]}>
+                  <Feather name={opt.icon as any} size={16} color={isActive ? "#fff" : Colors.light.primary} />
+                </View>
+                <Text style={[styles.accessLabel, isActive && styles.accessLabelActive]}>
+                  {opt.label}
+                </Text>
+                {isActive && (
+                  <Feather name="check" size={14} color={Colors.light.primary} style={styles.accessCheck} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.appSection}>
+          <Text style={styles.appSectionTitle}>App</Text>
+          <View style={styles.appCard}>
+            <TouchableOpacity onPress={handleResetOnboarding} activeOpacity={0.7} style={styles.appRow}>
+              <View style={styles.appRowIcon}>
+                <Feather name="refresh-cw" size={16} color={Colors.light.primary} />
+              </View>
+              <View style={styles.appRowText}>
+                <Text style={styles.appRowLabel}>Redo Setup Wizard</Text>
+                <Text style={styles.appRowSub}>Walk through all preferences again</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+            </TouchableOpacity>
+            <View style={styles.appDivider} />
+            <View style={styles.appRow}>
+              <View style={styles.appRowIcon}>
+                <Feather name="info" size={16} color={Colors.light.primary} />
+              </View>
+              <View style={styles.appRowText}>
+                <Text style={styles.appRowLabel}>About SeniorTravel</Text>
+                <Text style={styles.appRowSub}>AI-powered itineraries for senior explorers</Text>
               </View>
             </View>
-          )}
-        </Section>
-
-        {preferences.accessibilityNeeds.length > 0 && (
-          <Section title="Accessibility">
-            <View style={styles.chips}>
-              {preferences.accessibilityNeeds.map((need) => (
-                <View key={need} style={styles.accessChip}>
-                  <Feather name="check" size={12} color={Colors.light.primary} />
-                  <Text style={styles.chipText}>{need.replace("_", " ")}</Text>
-                </View>
-              ))}
-            </View>
-          </Section>
-        )}
-
-        {preferences.dietaryNeeds.length > 0 && (
-          <Section title="Dietary Needs">
-            <View style={styles.chips}>
-              {preferences.dietaryNeeds.map((need) => (
-                <View key={need} style={styles.chip}>
-                  <Text style={styles.chipText}>{need}</Text>
-                </View>
-              ))}
-            </View>
-          </Section>
-        )}
-
-        <Section title="App">
-          <SettingRow
-            icon="refresh-cw"
-            label="Redo Setup"
-            subtitle="Update your travel preferences"
-            onPress={handleResetOnboarding}
-          />
-          <SettingRow
-            icon="info"
-            label="About SeniorTravel"
-            subtitle="AI-powered itineraries for senior explorers"
-            onPress={() => {}}
-          />
-        </Section>
+          </View>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>SeniorTravel v1.0</Text>
           <Text style={styles.footerSub}>Explore the world comfortably</Text>
         </View>
       </ScrollView>
-
-      {showPaceSheet && (
-        <PaceSheet
-          current={preferences.pace}
-          onSelect={async (pace) => {
-            const stepsMap: Record<Pace, number> = { easy: 3000, moderate: 6000, active: 9000 };
-            await updatePreferences({ pace, maxStepsPerDay: stepsMap[pace] });
-            setShowPaceSheet(false);
-          }}
-          onClose={() => setShowPaceSheet(false)}
-        />
-      )}
     </View>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <View style={sectionStyles.container}>
-      <Text style={sectionStyles.title}>{title}</Text>
-      <View style={sectionStyles.content}>{children}</View>
+    <View style={headerStyles.container}>
+      <Text style={headerStyles.title}>{title}</Text>
+      <Text style={headerStyles.subtitle}>{subtitle}</Text>
     </View>
   );
 }
 
-function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
+function StatChip({ icon, label }: { icon: string; label: string }) {
   return (
-    <View style={statStyles.card}>
-      <Feather name={icon as any} size={18} color={Colors.light.primary} />
-      <Text style={statStyles.value}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
-function SettingRow({
-  icon,
-  label,
-  value,
-  subtitle,
-  onPress,
-}: {
-  icon: string;
-  label: string;
-  value?: string;
-  subtitle?: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={rowStyles.row}>
-      <View style={rowStyles.iconBox}>
-        <Feather name={icon as any} size={16} color={Colors.light.primary} />
-      </View>
-      <View style={rowStyles.content}>
-        <Text style={rowStyles.label}>{label}</Text>
-        {subtitle && <Text style={rowStyles.subtitle}>{subtitle}</Text>}
-      </View>
-      {value && <Text style={rowStyles.value}>{value}</Text>}
-      <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
-    </TouchableOpacity>
-  );
-}
-
-function PaceSheet({
-  current,
-  onSelect,
-  onClose,
-}: {
-  current: Pace;
-  onSelect: (pace: Pace) => void;
-  onClose: () => void;
-}) {
-  const paces: Pace[] = ["easy", "moderate", "active"];
-
-  return (
-    <View style={sheetStyles.overlay}>
-      <TouchableOpacity style={sheetStyles.backdrop} onPress={onClose} />
-      <View style={sheetStyles.sheet}>
-        <View style={sheetStyles.handle} />
-        <Text style={sheetStyles.title}>Travel Pace</Text>
-        {paces.map((pace) => {
-          const info = PACE_LABELS[pace];
-          return (
-            <TouchableOpacity
-              key={pace}
-              onPress={async () => {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onSelect(pace);
-              }}
-              style={[sheetStyles.option, current === pace && sheetStyles.optionActive]}
-            >
-              <Feather name={info.icon as any} size={18} color={current === pace ? "#fff" : Colors.light.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={[sheetStyles.optionLabel, current === pace && sheetStyles.optionLabelActive]}>
-                  {info.label}
-                </Text>
-                <Text style={[sheetStyles.optionDesc, current === pace && sheetStyles.optionDescActive]}>
-                  {info.desc}
-                </Text>
-              </View>
-              {current === pace && <Feather name="check" size={18} color="#fff" />}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+    <View style={statChipStyles.chip}>
+      <Feather name={icon as any} size={14} color={Colors.light.primary} />
+      <Text style={statChipStyles.label}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
-  scrollContent: { padding: 20, gap: 20 },
+  scrollContent: { padding: 20, gap: 14 },
+
   profileHeader: {
     alignItems: "center",
     gap: 8,
@@ -285,9 +356,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.primaryPale,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: Colors.light.primaryPale,
     alignItems: "center",
     justifyContent: "center",
@@ -302,51 +373,238 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
   },
+
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 8,
   },
-  tagsRow: {
-    padding: 14,
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.borderLight,
+
+  paceGrid: { gap: 8 },
+  paceCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: Colors.light.borderLight,
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+      android: { elevation: 1 },
+      web: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+    }),
   },
-  tagLabel: {
+  paceCardActive: {
+    borderColor: Colors.light.primary,
+    backgroundColor: Colors.light.primaryPale,
+  },
+  paceIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.light.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  paceIconBoxActive: {
+    backgroundColor: Colors.light.primary,
+  },
+  paceText: { flex: 1, gap: 3 },
+  paceLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
-  tagLabelText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+  paceLabel: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
     color: Colors.light.text,
   },
-  chips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    backgroundColor: Colors.light.primaryPale,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  accessChip: {
+  paceLabelActive: { color: Colors.light.primary },
+  selectedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.light.primaryPale,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    gap: 3,
+    backgroundColor: "#fff",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+  selectedBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
     color: Colors.light.primary,
   },
+  paceSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    lineHeight: 18,
+  },
+  paceSubtitleActive: { color: Colors.light.primary, opacity: 0.75 },
+  paceSteps: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textTertiary,
+    marginTop: 2,
+  },
+  paceStepsActive: { color: Colors.light.primary, opacity: 0.6 },
+
+  budgetRow: { flexDirection: "row", gap: 8 },
+  budgetCard: {
+    flex: 1,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: Colors.light.borderLight,
+    gap: 3,
+    alignItems: "center",
+  },
+  budgetCardActive: {
+    borderColor: Colors.light.primary,
+    backgroundColor: Colors.light.primaryPale,
+  },
+  budgetSymbol: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: Colors.light.textTertiary,
+  },
+  budgetSymbolActive: { color: Colors.light.primary },
+  budgetLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: Colors.light.text,
+    textAlign: "center",
+  },
+  budgetLabelActive: { color: Colors.light.primary },
+  budgetDesc: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textTertiary,
+    textAlign: "center",
+  },
+  budgetDescActive: { color: Colors.light.primary, opacity: 0.65 },
+  budgetCheck: {
+    marginTop: 6,
+  },
+
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+  },
+  chipActive: {
+    backgroundColor: Colors.light.primary,
+    borderColor: Colors.light.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textSecondary,
+  },
+  chipTextActive: { color: "#fff" },
+
+  accessGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  accessCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "47%",
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+  },
+  accessCardActive: {
+    borderColor: Colors.light.primary,
+    backgroundColor: Colors.light.primaryPale,
+  },
+  accessIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.light.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accessIconActive: { backgroundColor: Colors.light.primary },
+  accessLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+  },
+  accessLabelActive: { color: Colors.light.primary },
+  accessCheck: { marginLeft: "auto" },
+
+  appSection: { gap: 8, marginTop: 6 },
+  appSectionTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    paddingHorizontal: 2,
+  },
+  appCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.borderLight,
+    overflow: "hidden",
+  },
+  appRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+  },
+  appDivider: {
+    height: 1,
+    backgroundColor: Colors.light.borderLight,
+    marginHorizontal: 14,
+  },
+  appRowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.light.primaryPale,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appRowText: { flex: 1, gap: 2 },
+  appRowLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+  },
+  appRowSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+  },
+
   footer: {
     alignItems: "center",
     gap: 4,
@@ -364,135 +622,36 @@ const styles = StyleSheet.create({
   },
 });
 
-const sectionStyles = StyleSheet.create({
-  container: { gap: 8 },
-  title: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    paddingHorizontal: 2,
-  },
-  content: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.light.borderLight,
-  },
-});
-
-const statStyles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    gap: 4,
-    borderWidth: 1,
-    borderColor: Colors.light.borderLight,
-  },
-  value: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: Colors.light.text,
-  },
-  label: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    textAlign: "center",
-  },
-});
-
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderLight,
-  },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: Colors.light.primaryPale,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: { flex: 1, gap: 2 },
-  label: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.text,
-  },
-  subtitle: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-  },
-  value: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.textSecondary,
-  },
-});
-
-const sheetStyles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-    zIndex: 100,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  sheet: {
-    backgroundColor: Colors.light.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-    gap: 12,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.light.border,
-    alignSelf: "center",
-    marginBottom: 8,
+const headerStyles = StyleSheet.create({
+  container: {
+    gap: 3,
+    marginTop: 6,
   },
   title: {
     fontSize: 18,
     fontFamily: "Inter_700Bold",
     color: Colors.light.text,
-    marginBottom: 4,
   },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.light.surfaceSecondary,
-  },
-  optionActive: { backgroundColor: Colors.light.primary },
-  optionLabel: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.text,
-  },
-  optionLabelActive: { color: "#fff" },
-  optionDesc: {
+  subtitle: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
   },
-  optionDescActive: { color: "rgba(255,255,255,0.75)" },
+});
+
+const statChipStyles = StyleSheet.create({
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.light.primaryPale,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  label: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.primary,
+  },
 });
