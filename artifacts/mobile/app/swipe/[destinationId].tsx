@@ -18,19 +18,17 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
   interpolate,
   runOnJS,
-  useAnimatedGestureHandler,
 } from "react-native-reanimated";
-import { PanGestureHandler } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-const CARD_W = SCREEN_W - 48;
-const CARD_H = SCREEN_H * 0.65;
-const SWIPE_THRESHOLD = SCREEN_W * 0.3;
+const CARD_W = Math.min(SCREEN_W - 48, 360);
+const CARD_H = Math.min(SCREEN_H * 0.62, 520);
+const SWIPE_THRESHOLD = SCREEN_W * 0.28;
 
 const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -64,10 +62,9 @@ export default function SwipeScreen() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState<Attraction[]>([]);
-  const [rejected, setRejected] = useState<Attraction[]>([]);
   const [finished, setFinished] = useState(false);
 
-  const { data: attractions = [], isLoading } = useQuery({
+  const { data: attractions = [], isLoading, isError } = useQuery({
     queryKey: ["attractions", destinationId],
     queryFn: () => fetchAttractions(destinationId!),
     enabled: !!destinationId,
@@ -83,26 +80,21 @@ export default function SwipeScreen() {
         setLiked((prev) => [...prev, attraction]);
       } else {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setRejected((prev) => [...prev, attraction]);
       }
-
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
-      if (nextIndex >= attractions.length) {
-        setFinished(true);
-      }
+      if (nextIndex >= attractions.length) setFinished(true);
     },
     [currentIndex, attractions.length]
   );
 
   const handlePlanTrip = () => {
-    const likedNames = liked.map((a) => a.name);
     router.push({
       pathname: "/itinerary/generate",
       params: {
         city: city || "",
         country: country || "",
-        likedAttractions: likedNames.join(","),
+        likedAttractions: liked.map((a) => a.name).join(","),
       },
     });
   };
@@ -111,46 +103,63 @@ export default function SwipeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <LinearGradient
-          colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-          style={StyleSheet.absoluteFill}
-        />
+      <View style={styles.fullScreen}>
+        <LinearGradient colors={["#0D1117", "#1A2332"]} style={StyleSheet.absoluteFill} />
         <ActivityIndicator color="#fff" size="large" />
         <Text style={styles.loadingText}>Finding top spots in {city}…</Text>
       </View>
     );
   }
 
+  if (isError) {
+    return (
+      <View style={styles.fullScreen}>
+        <LinearGradient colors={["#0D1117", "#1A2332"]} style={StyleSheet.absoluteFill} />
+        <Feather name="alert-circle" size={40} color="rgba(255,255,255,0.4)" />
+        <Text style={styles.loadingText}>Couldn't load attractions</Text>
+        <TouchableOpacity onPress={handleBack} style={styles.errorBackBtn}>
+          <Text style={styles.errorBackText}>Go back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (finished || attractions.length === 0) {
-    return <ResultScreen liked={liked} city={city || ""} country={country || ""} onPlan={handlePlanTrip} onBack={handleBack} insets={insets} />;
+    return (
+      <ResultScreen
+        liked={liked}
+        city={city || ""}
+        country={country || ""}
+        onPlan={handlePlanTrip}
+        onBack={handleBack}
+        topPadding={topPadding}
+        bottomPadding={bottomPadding}
+      />
+    );
   }
 
   const currentCard = attractions[currentIndex];
   const nextCard = attractions[currentIndex + 1];
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={["#0D1117", "#1A2332"]}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={styles.fullScreen}>
+      <LinearGradient colors={["#0D1117", "#1A2332"]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.header, { paddingTop: topPadding + 10 }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-          <Feather name="x" size={20} color="rgba(255,255,255,0.7)" />
+        <TouchableOpacity onPress={handleBack} style={styles.iconBtn}>
+          <Feather name="arrow-left" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerCity}>{city}</Text>
           <Text style={styles.headerSub}>
-            {currentIndex + 1} of {attractions.length}
+            {currentIndex + 1} of {attractions.length} spots
           </Text>
         </View>
 
         <View style={styles.likeCounter}>
           <Feather name="heart" size={14} color="#FF6B9D" />
-          <Text style={styles.likeCount}>{liked.length}</Text>
+          <Text style={styles.likeCountText}>{liked.length}</Text>
         </View>
       </View>
 
@@ -169,19 +178,15 @@ export default function SwipeScreen() {
 
       <View style={styles.cardArea}>
         {nextCard && (
-          <View style={[styles.cardShadow, { zIndex: 1 }]}>
-            <View style={[styles.cardBehind]}>
-              <LinearGradient
-                colors={nextCard.gradient as [string, string]}
-                style={styles.cardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.cardContentBehind}>
-                  <Text style={styles.cardEmojiBehind}>{nextCard.emoji}</Text>
-                </View>
-              </LinearGradient>
-            </View>
+          <View style={styles.behindCard} pointerEvents="none">
+            <LinearGradient
+              colors={nextCard.gradient}
+              style={styles.behindCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.behindEmoji}>{nextCard.emoji}</Text>
+            </LinearGradient>
           </View>
         )}
 
@@ -204,9 +209,7 @@ export default function SwipeScreen() {
           <Feather name="x" size={28} color="#FF6B6B" />
         </TouchableOpacity>
 
-        <View style={styles.centerHint}>
-          <Text style={styles.swipeHintText}>swipe or tap</Text>
-        </View>
+        <Text style={styles.orSwipeText}>← swipe →</Text>
 
         <TouchableOpacity
           onPress={() => currentCard && handleSwipeAction("like", currentCard)}
@@ -231,37 +234,38 @@ function SwipeCard({
 }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, ctx: any) => {
-      ctx.startX = translateX.value;
-      ctx.startY = translateY.value;
-    },
-    onActive: (event, ctx: any) => {
-      translateX.value = ctx.startX + event.translationX;
-      translateY.value = ctx.startY + event.translationY * 0.3;
-    },
-    onEnd: (event) => {
-      if (event.translationX > SWIPE_THRESHOLD) {
-        translateX.value = withSpring(SCREEN_W * 1.5, { damping: 15 });
-        translateY.value = withSpring(50);
+  const pan = Gesture.Pan()
+    .onBegin(() => {
+      startX.value = translateX.value;
+      startY.value = translateY.value;
+    })
+    .onUpdate((e) => {
+      translateX.value = startX.value + e.translationX;
+      translateY.value = startY.value + e.translationY * 0.25;
+    })
+    .onEnd((e) => {
+      if (e.translationX > SWIPE_THRESHOLD) {
+        translateX.value = withSpring(SCREEN_W * 1.5, { damping: 14 });
+        translateY.value = withSpring(30);
         runOnJS(onLike)();
-      } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-SCREEN_W * 1.5, { damping: 15 });
-        translateY.value = withSpring(50);
+      } else if (e.translationX < -SWIPE_THRESHOLD) {
+        translateX.value = withSpring(-SCREEN_W * 1.5, { damping: 14 });
+        translateY.value = withSpring(30);
         runOnJS(onReject)();
       } else {
-        translateX.value = withSpring(0, { damping: 15 });
-        translateY.value = withSpring(0, { damping: 15 });
+        translateX.value = withSpring(0, { damping: 14 });
+        translateY.value = withSpring(0, { damping: 14 });
       }
-    },
-  });
+    });
 
   const cardStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
       translateX.value,
       [-SCREEN_W / 2, 0, SCREEN_W / 2],
-      [-15, 0, 15]
+      [-14, 0, 14]
     );
     return {
       transform: [
@@ -272,39 +276,39 @@ function SwipeCard({
     };
   });
 
-  const likeOverlayStyle = useAnimatedStyle(() => ({
+  const likeOpacity = useAnimatedStyle(() => ({
     opacity: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0, 1], "clamp"),
   }));
 
-  const rejectOverlayStyle = useAnimatedStyle(() => ({
+  const rejectOpacity = useAnimatedStyle(() => ({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], "clamp"),
   }));
 
   return (
-    <PanGestureHandler onGestureEvent={gestureHandler}>
+    <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, cardStyle]}>
         <LinearGradient
-          colors={attraction.gradient as [string, string]}
+          colors={attraction.gradient}
           style={styles.cardGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Animated.View style={[styles.likeOverlay, likeOverlayStyle]}>
+          <Animated.View style={[styles.stampContainer, { left: 24 }, likeOpacity]}>
             <View style={styles.likeStamp}>
-              <Feather name="heart" size={28} color="#FF6B9D" />
+              <Feather name="heart" size={24} color="#FF6B9D" />
               <Text style={styles.likeStampText}>LOVE IT</Text>
             </View>
           </Animated.View>
 
-          <Animated.View style={[styles.rejectOverlay, rejectOverlayStyle]}>
+          <Animated.View style={[styles.stampContainer, { right: 24 }, rejectOpacity]}>
             <View style={styles.rejectStamp}>
-              <Feather name="x" size={28} color="#FF6B6B" />
+              <Feather name="x" size={24} color="#FF6B6B" />
               <Text style={styles.rejectStampText}>SKIP</Text>
             </View>
           </Animated.View>
 
-          <View style={styles.cardContent}>
-            <View style={styles.emojiContainer}>
+          <View style={styles.cardBody}>
+            <View style={styles.emojiBox}>
               <Text style={styles.cardEmoji}>{attraction.emoji}</Text>
             </View>
 
@@ -315,69 +319,49 @@ function SwipeCard({
             <Text style={styles.cardName}>{attraction.name}</Text>
             <Text style={styles.cardDesc}>{attraction.description}</Text>
 
-            <View style={styles.cardStats}>
+            <View style={styles.statsRow}>
               <StatPill icon="activity" value={`${attraction.seniorScore}/10`} label="Senior Score" highlight />
-              <StatPill icon="clock" value={`${attraction.walkingMinutes} min`} label="Walking" />
-              <StatPill icon="map-pin" value={`${attraction.steps.toLocaleString()}`} label="Steps" />
+              <StatPill icon="clock" value={`${attraction.walkingMinutes}m`} label="Walk" />
+              <StatPill icon="map-pin" value={attraction.steps.toLocaleString()} label="Steps" />
             </View>
           </View>
 
-          <View style={styles.cardSwipeHint}>
-            <Feather name="arrow-left" size={16} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.cardSwipeHintText}>skip · swipe · love</Text>
-            <Feather name="arrow-right" size={16} color="rgba(255,255,255,0.3)" />
+          <View style={styles.cardHint}>
+            <Feather name="arrow-left" size={14} color="rgba(255,255,255,0.25)" />
+            <Text style={styles.cardHintText}>skip · swipe · love</Text>
+            <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.25)" />
           </View>
         </LinearGradient>
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 }
 
-function StatPill({
-  icon,
-  value,
-  label,
-  highlight,
-}: {
-  icon: string;
-  value: string;
-  label: string;
-  highlight?: boolean;
+function StatPill({ icon, value, label, highlight }: {
+  icon: string; value: string; label: string; highlight?: boolean;
 }) {
   return (
-    <View style={[statStyles.pill, highlight && statStyles.pillHighlight]}>
-      <Feather name={icon as any} size={11} color={highlight ? Colors.light.accent : "rgba(255,255,255,0.7)"} />
-      <Text style={[statStyles.value, highlight && statStyles.valueHighlight]}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
+    <View style={[pillStyles.pill, highlight && pillStyles.pillHL]}>
+      <Feather name={icon as any} size={11} color={highlight ? Colors.light.accent : "rgba(255,255,255,0.6)"} />
+      <Text style={[pillStyles.val, highlight && pillStyles.valHL]}>{value}</Text>
+      <Text style={pillStyles.lbl}>{label}</Text>
     </View>
   );
 }
 
 function ResultScreen({
-  liked,
-  city,
-  country,
-  onPlan,
-  onBack,
-  insets,
+  liked, city, country, onPlan, onBack, topPadding, bottomPadding,
 }: {
-  liked: Attraction[];
-  city: string;
-  country: string;
-  onPlan: () => void;
-  onBack: () => void;
-  insets: { top: number; bottom: number };
+  liked: Attraction[]; city: string; country: string;
+  onPlan: () => void; onBack: () => void;
+  topPadding: number; bottomPadding: number;
 }) {
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPadding = Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0);
-
   return (
-    <View style={resultStyles.container}>
+    <View style={styles.fullScreen}>
       <LinearGradient
         colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
         style={StyleSheet.absoluteFill}
       />
-
       <ScrollView
         contentContainerStyle={[
           resultStyles.content,
@@ -385,7 +369,7 @@ function ResultScreen({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity onPress={onBack} style={resultStyles.backBtn}>
+        <TouchableOpacity onPress={onBack} style={styles.iconBtn}>
           <Feather name="arrow-left" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
 
@@ -395,49 +379,40 @@ function ResultScreen({
           </Text>
           <Text style={resultStyles.title}>
             {liked.length === 0
-              ? "Let's explore together"
+              ? "Ready to explore"
               : `${liked.length} spot${liked.length !== 1 ? "s" : ""} you'll love`}
           </Text>
           <Text style={resultStyles.subtitle}>
             {liked.length === 0
-              ? `We'll create a great itinerary for ${city} based on your preferences.`
-              : `These places will be woven into your ${city} itinerary by the AI.`}
+              ? `We'll create a great itinerary for ${city} based on your profile.`
+              : `These will be woven into your ${city} itinerary by the AI.`}
           </Text>
         </View>
 
         {liked.length > 0 && (
-          <View style={resultStyles.likedSection}>
-            <Text style={resultStyles.sectionTitle}>You loved these</Text>
-            <View style={resultStyles.likedGrid}>
-              {liked.map((attr) => (
-                <View key={attr.id} style={resultStyles.likedCard}>
-                  <LinearGradient
-                    colors={attr.gradient as [string, string]}
-                    style={resultStyles.likedCardGradient}
-                  >
-                    <Text style={resultStyles.likedEmoji}>{attr.emoji}</Text>
-                  </LinearGradient>
-                  <View style={resultStyles.likedInfo}>
-                    <Text style={resultStyles.likedName} numberOfLines={1}>
-                      {attr.name}
-                    </Text>
-                    <Text style={resultStyles.likedCategory}>{attr.category}</Text>
-                  </View>
-                  <Feather name="heart" size={14} color="#FF6B9D" />
+          <View style={resultStyles.likedList}>
+            {liked.map((attr) => (
+              <View key={attr.id} style={resultStyles.likedRow}>
+                <LinearGradient
+                  colors={attr.gradient}
+                  style={resultStyles.likedSwatch}
+                >
+                  <Text style={resultStyles.likedEmoji}>{attr.emoji}</Text>
+                </LinearGradient>
+                <View style={resultStyles.likedInfo}>
+                  <Text style={resultStyles.likedName} numberOfLines={1}>{attr.name}</Text>
+                  <Text style={resultStyles.likedCat}>{attr.category}</Text>
                 </View>
-              ))}
-            </View>
+                <Feather name="heart" size={14} color="#FF6B9D" />
+              </View>
+            ))}
           </View>
         )}
 
-        <TouchableOpacity
-          onPress={onPlan}
-          activeOpacity={0.9}
-          style={resultStyles.planBtn}
-        >
+        <TouchableOpacity onPress={onPlan} activeOpacity={0.9} style={resultStyles.planBtn}>
           <LinearGradient
             colors={[Colors.light.accent, "#C87C2A"]}
-            style={resultStyles.planBtnGradient}
+            style={resultStyles.planBtnInner}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
@@ -448,7 +423,7 @@ function ResultScreen({
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onBack} style={resultStyles.skipBtn}>
-          <Text style={resultStyles.skipText}>Go back to destinations</Text>
+          <Text style={resultStyles.skipText}>← Back to destinations</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -456,8 +431,7 @@ function ResultScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loadingContainer: {
+  fullScreen: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -466,21 +440,36 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.7)",
+  },
+  errorBackBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+  },
+  errorBackText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 10,
+    width: "100%",
+    gap: 12,
   },
-  backBtn: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   headerCenter: {
     flex: 1,
@@ -495,21 +484,22 @@ const styles = StyleSheet.create({
   headerSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.45)",
   },
   likeCounter: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(255,107,157,0.15)",
+    backgroundColor: "rgba(255,107,157,0.12)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,107,157,0.3)",
+    borderColor: "rgba(255,107,157,0.25)",
+    flexShrink: 0,
   },
-  likeCount: {
-    fontSize: 14,
+  likeCountText: {
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
     color: "#FF6B9D",
   },
@@ -517,16 +507,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
     paddingHorizontal: 24,
-    marginBottom: 16,
+    marginBottom: 14,
+    width: "100%",
   },
   progressDot: {
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   progressDotActive: {
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(255,255,255,0.55)",
   },
   progressDotDone: {
     backgroundColor: "#FF6B9D",
@@ -535,25 +526,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    width: "100%",
   },
-  cardShadow: {
+  behindCard: {
     position: "absolute",
-  },
-  cardBehind: {
     width: CARD_W,
     height: CARD_H,
     borderRadius: 28,
     overflow: "hidden",
-    transform: [{ scale: 0.94 }, { translateY: 16 }],
-    opacity: 0.5,
+    transform: [{ scale: 0.94 }, { translateY: 14 }],
+    opacity: 0.45,
   },
-  cardContentBehind: {
+  behindCardGradient: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardEmojiBehind: {
-    fontSize: 60,
+  behindEmoji: {
+    fontSize: 56,
     opacity: 0.3,
   },
   card: {
@@ -563,289 +553,247 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     zIndex: 10,
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.4,
-        shadowRadius: 24,
-      },
-      android: { elevation: 12 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.4,
-        shadowRadius: 24,
-      },
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.45, shadowRadius: 24 },
+      android: { elevation: 14 },
+      web: { boxShadow: "0 12px 40px rgba(0,0,0,0.5)" },
     }),
   },
   cardGradient: {
     flex: 1,
-    padding: 28,
+    padding: 24,
     justifyContent: "flex-end",
+    gap: 0,
   },
-  likeOverlay: {
+  stampContainer: {
     position: "absolute",
-    top: 36,
-    left: 28,
+    top: 32,
     zIndex: 20,
   },
   likeStamp: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderWidth: 3,
+    gap: 7,
+    borderWidth: 2.5,
     borderColor: "#FF6B9D",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     transform: [{ rotate: "-12deg" }],
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.25)",
   },
   likeStampText: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
     color: "#FF6B9D",
     letterSpacing: 2,
   },
-  rejectOverlay: {
-    position: "absolute",
-    top: 36,
-    right: 28,
-    zIndex: 20,
-  },
   rejectStamp: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderWidth: 3,
+    gap: 7,
+    borderWidth: 2.5,
     borderColor: "#FF6B6B",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     transform: [{ rotate: "12deg" }],
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.25)",
   },
   rejectStampText: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
     color: "#FF6B6B",
     letterSpacing: 2,
   },
-  cardContent: {
-    gap: 12,
+  cardBody: {
+    gap: 10,
   },
-  emojiContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  emojiBox: {
+    width: 66,
+    height: 66,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  cardEmoji: {
-    fontSize: 38,
-  },
+  cardEmoji: { fontSize: 34 },
   categoryBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: 20,
   },
   categoryText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     color: "rgba(255,255,255,0.9)",
   },
   cardName: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
     color: "#fff",
-    lineHeight: 32,
+    lineHeight: 30,
   },
   cardDesc: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
-    lineHeight: 22,
+    color: "rgba(255,255,255,0.78)",
+    lineHeight: 20,
   },
-  cardStats: {
+  statsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
     flexWrap: "wrap",
-    marginTop: 4,
+    marginTop: 2,
   },
-  cardSwipeHint: {
+  cardHint: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginTop: 16,
+    marginTop: 14,
   },
-  cardSwipeHintText: {
-    fontSize: 12,
+  cardHintText: {
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.3)",
-    letterSpacing: 1,
+    color: "rgba(255,255,255,0.25)",
+    letterSpacing: 0.8,
   },
   buttonRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
-    paddingTop: 20,
-    gap: 20,
+    paddingTop: 16,
+    gap: 24,
+    width: "100%",
   },
   rejectBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "rgba(255,107,107,0.12)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,107,107,0.1)",
     borderWidth: 2,
-    borderColor: "rgba(255,107,107,0.3)",
+    borderColor: "rgba(255,107,107,0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
   likeBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "rgba(255,107,157,0.12)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,107,157,0.1)",
     borderWidth: 2,
-    borderColor: "rgba(255,107,157,0.3)",
+    borderColor: "rgba(255,107,157,0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
-  centerHint: {
+  orSwipeText: {
     flex: 1,
-    alignItems: "center",
-  },
-  swipeHintText: {
-    fontSize: 11,
+    textAlign: "center",
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.3)",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
 });
 
-const statStyles = StyleSheet.create({
+const pillStyles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 20,
   },
-  pillHighlight: {
-    backgroundColor: "rgba(232,169,81,0.2)",
+  pillHL: {
+    backgroundColor: "rgba(232,169,81,0.18)",
     borderWidth: 1,
-    borderColor: "rgba(232,169,81,0.4)",
+    borderColor: "rgba(232,169,81,0.35)",
   },
-  value: {
-    fontSize: 13,
+  val: {
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     color: "#fff",
   },
-  valueHighlight: {
-    color: Colors.light.accent,
-  },
-  label: {
-    fontSize: 11,
+  valHL: { color: Colors.light.accent },
+  lbl: {
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.45)",
   },
 });
 
 const resultStyles = StyleSheet.create({
-  container: { flex: 1 },
   content: {
     paddingHorizontal: 24,
-    gap: 24,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
+    gap: 22,
+    width: "100%",
   },
   heroSection: {
     alignItems: "center",
     gap: 10,
+    paddingTop: 8,
   },
-  bigEmoji: {
-    fontSize: 64,
-    marginBottom: 8,
-  },
+  bigEmoji: { fontSize: 60, marginBottom: 4 },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
     color: "#fff",
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.65)",
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.5)",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  likedSection: { gap: 12 },
-  likedGrid: { gap: 10 },
-  likedCard: {
+  likedList: { gap: 10 },
+  likedRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,107,157,0.2)",
+    borderColor: "rgba(255,107,157,0.18)",
   },
-  likedCardGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  likedSwatch: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
   },
-  likedEmoji: { fontSize: 22 },
+  likedEmoji: { fontSize: 20 },
   likedInfo: { flex: 1, gap: 2 },
   likedName: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
   },
-  likedCategory: {
+  likedCat: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.45)",
   },
   planBtn: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: "hidden",
-    marginTop: 8,
+    marginTop: 4,
     ...Platform.select({
-      ios: { shadowColor: Colors.light.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 },
+      ios: { shadowColor: Colors.light.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16 },
       android: { elevation: 8 },
-      web: { shadowColor: Colors.light.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 },
+      web: { boxShadow: `0 8px 24px ${Colors.light.accent}55` },
     }),
   },
-  planBtnGradient: {
+  planBtnInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -855,7 +803,7 @@ const resultStyles = StyleSheet.create({
   },
   planBtnText: {
     flex: 1,
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: "#fff",
   },
@@ -864,8 +812,8 @@ const resultStyles = StyleSheet.create({
     paddingVertical: 4,
   },
   skipText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.35)",
   },
 });
