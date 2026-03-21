@@ -43,6 +43,27 @@ router.post("/sparks", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/sparks/user/:authorName", async (req: Request, res: Response) => {
+  try {
+    const deviceId = (req.query.deviceId as string) || "";
+    const authorName = decodeURIComponent(req.params.authorName);
+    const { rows } = await pool.query(
+      `SELECT s.*,
+        CASE WHEN sl.device_id IS NOT NULL THEN true ELSE false END AS liked_by_me
+       FROM sparks s
+       LEFT JOIN spark_likes sl ON sl.spark_id = s.id AND sl.device_id = $2
+       WHERE s.author_name = $1
+       ORDER BY s.created_at DESC`,
+      [authorName, deviceId]
+    );
+    const totalLikes = rows.reduce((sum: number, r: { likes_count: number }) => sum + (r.likes_count || 0), 0);
+    res.json({ sparks: rows, authorName, totalLikes });
+  } catch (err) {
+    console.error("GET /sparks/user/:authorName error:", err);
+    res.status(500).json({ error: "Failed to fetch user sparks" });
+  }
+});
+
 router.post("/sparks/:id/like", async (req: Request, res: Response) => {
   try {
     const sparkId = parseInt(req.params.id);
