@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -81,27 +82,21 @@ export default function ProfileScreen() {
   const { preferences, updatePreferences } = usePreferences();
   const { savedItineraries } = useSavedItineraries();
   const { user, signOut } = useAuth();
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const bottomPadding = Math.max(insets.bottom + 100, 120);
 
   const handleSignOut = async () => {
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      "Sign out",
-      `Sign out of ${user?.email ?? "your account"}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign out",
-          style: "destructive",
-          onPress: async () => {
-            await signOut();
-            router.replace("/login");
-          },
-        },
-      ]
-    );
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.replace("/login");
+    } catch {
+      setSigningOut(false);
+      setConfirmingSignOut(false);
+    }
   };
 
   const handleResetOnboarding = async () => {
@@ -337,9 +332,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {user && (
+        {user && !confirmingSignOut && (
           <TouchableOpacity
-            onPress={handleSignOut}
+            onPress={() => setConfirmingSignOut(true)}
             activeOpacity={0.8}
             style={styles.signOutBtn}
           >
@@ -349,6 +344,38 @@ export default function ProfileScreen() {
               <Text style={styles.signOutSub}>{user.email}</Text>
             </View>
           </TouchableOpacity>
+        )}
+
+        {user && confirmingSignOut && (
+          <View style={styles.signOutConfirm}>
+            <Feather name="log-out" size={18} color="#D93025" />
+            <View style={styles.signOutText}>
+              <Text style={styles.signOutLabel}>Sign out?</Text>
+              <Text style={styles.signOutSub}>You'll need to sign in again</Text>
+            </View>
+            <View style={styles.signOutActions}>
+              <TouchableOpacity
+                onPress={() => setConfirmingSignOut(false)}
+                style={styles.signOutCancel}
+                activeOpacity={0.7}
+                disabled={signingOut}
+              >
+                <Text style={styles.signOutCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSignOut}
+                style={styles.signOutConfirmBtn}
+                activeOpacity={0.7}
+                disabled={signingOut}
+              >
+                {signingOut ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.signOutConfirmText}>Sign out</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         <View style={styles.footer}>
@@ -427,7 +454,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FFE0DE",
   },
-  signOutText: { gap: 2 },
+  signOutText: { flex: 1, gap: 2 },
   signOutLabel: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
@@ -437,6 +464,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(217,48,37,0.65)",
+  },
+  signOutConfirm: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#FFF5F5",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#FFE0DE",
+  },
+  signOutActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  signOutCancel: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#F0F0F0",
+  },
+  signOutCancelText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textSecondary,
+  },
+  signOutConfirmBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#D93025",
+    minWidth: 80,
+    alignItems: "center",
+  },
+  signOutConfirmText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
 
   statsRow: {
