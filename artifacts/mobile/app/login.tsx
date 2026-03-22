@@ -26,7 +26,7 @@ function GoogleIcon() {
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId, redirectUri } = useAuth();
+  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,13 +95,6 @@ export default function LoginScreen() {
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {hasGoogleClientId && (
-          <View style={styles.redirectNotice}>
-            <Text style={styles.redirectLabel}>Add this to Google Cloud Console → Authorized redirect URIs:</Text>
-            <Text style={styles.redirectUri} selectable>{redirectUri}</Text>
           </View>
         )}
 

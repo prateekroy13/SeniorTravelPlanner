@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -28,6 +27,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: any) => { requestAccessToken: () => void };
+        };
+      };
+    };
+  }
+}
+
+async function loadGoogleIdentityServices(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (window.google?.accounts) return;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google Identity Services"));
+    document.head.appendChild(script);
+  });
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,22 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
   const hasGoogleClientId = !!googleClientId;
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "mobile",
-    path: "/(tabs)/",
-  });
-
-  useEffect(() => {
-    console.log("[Auth] Redirect URI being used:", redirectUri);
-  }, [redirectUri]);
+  const isWeb = Platform.OS === "web";
 
   const [, response, promptAsync] = Google.useAuthRequest(
-    googleClientId
+    !isWeb && googleClientId
       ? {
           clientId: googleClientId,
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-          redirectUri,
         }
       : (null as any)
   );
@@ -61,10 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (response?.type === "success") {
+    if (!isWeb && response?.type === "success") {
       const token = (response as any).authentication?.accessToken;
       if (token) fetchGoogleUser(token);
-    } else if (response?.type === "error" || response?.type === "dismiss") {
+    } else if (!isWeb && (response?.type === "error" || response?.type === "dismiss")) {
       setSigningIn(false);
     }
   }, [response]);
@@ -100,7 +116,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogleWeb = async () => {
+    if (!googleClientId) throw new Error("Google Client ID not configured");
+    setSigningIn(true);
+    try {
+      await loadGoogleIdentityServices();
+      await new Promise<void>((resolve, reject) => {
+        const tokenClient = window.google!.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: "email profile openid",
+          callback: async (resp: any) => {
+            if (resp.error) {
+              setSigningIn(false);
+              reject(new Error(resp.error));
+              return;
+            }
+            await fetchGoogleUser(resp.access_token);
+            resolve();
+          },
+        });
+        tokenClient.requestAccessToken();
+      });
+    } catch (e) {
+      setSigningIn(false);
+      throw e;
+    }
+  };
+
+  const signInWithGoogleNative = async () => {
     setSigningIn(true);
     try {
       await promptAsync();
@@ -110,10 +153,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = isWeb ? signInWithGoogleWeb : signInWithGoogleNative;
+
   const signOut = async () => {
     await AsyncStorage.removeItem(AUTH_KEY);
     setUser(null);
   };
+
+  const redirectUri = "";
 
   return (
     <AuthContext.Provider
