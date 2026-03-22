@@ -26,7 +26,7 @@ function GoogleIcon() {
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId } = useAuth();
+  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId, redirectUri } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,6 +95,13 @@ export default function LoginScreen() {
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {hasGoogleClientId && (
+          <View style={styles.redirectNotice}>
+            <Text style={styles.redirectLabel}>Add this to Google Cloud Console → Authorized redirect URIs:</Text>
+            <Text style={styles.redirectUri} selectable>{redirectUri}</Text>
           </View>
         )}
 
@@ -327,5 +334,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 16,
     marginTop: 4,
+  },
+  redirectNotice: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 6,
+  },
+  redirectLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.4)",
+  },
+  redirectUri: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: -0.2,
   },
 });

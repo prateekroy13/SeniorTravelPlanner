@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -21,6 +23,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   hasGoogleClientId: boolean;
+  redirectUri: string;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,14 +36,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
   const hasGoogleClientId = !!googleClientId;
 
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "mobile",
+    path: "/(tabs)/",
+  });
+
+  useEffect(() => {
+    console.log("[Auth] Redirect URI being used:", redirectUri);
+  }, [redirectUri]);
+
   const [, response, promptAsync] = Google.useAuthRequest(
     googleClientId
       ? {
           clientId: googleClientId,
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+          redirectUri,
         }
-      : null as any
+      : (null as any)
   );
 
   useEffect(() => {
@@ -104,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, signingIn, signInWithGoogle, signOut, hasGoogleClientId }}
+      value={{ user, isLoading, signingIn, signInWithGoogle, signOut, hasGoogleClientId, redirectUri }}
     >
       {children}
     </AuthContext.Provider>
