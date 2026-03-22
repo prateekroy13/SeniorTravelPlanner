@@ -8,10 +8,13 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/context/AuthContext";
+import { UserAvatar } from "@/components/UserAvatar";
 import { usePreferences, Pace, BudgetLevel } from "@/context/PreferencesContext";
 import { useSavedItineraries } from "@/context/SavedItinerariesContext";
 
@@ -77,9 +80,29 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { preferences, updatePreferences } = usePreferences();
   const { savedItineraries } = useSavedItineraries();
+  const { user, signOut } = useAuth();
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const bottomPadding = Math.max(insets.bottom + 100, 120);
+
+  const handleSignOut = async () => {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      "Sign out",
+      `Sign out of ${user?.email ?? "your account"}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            await signOut();
+            router.replace("/login");
+          },
+        },
+      ]
+    );
+  };
 
   const handleResetOnboarding = async () => {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -132,11 +155,12 @@ export default function ProfileScreen() {
       >
         <View style={[styles.profileHeader, { paddingTop: topPadding + 16 }]}>
           <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Feather name="user" size={28} color={Colors.light.primary} />
-            </View>
+            <UserAvatar user={user} size={72} />
           </View>
-          <Text style={styles.name}>My Travel Profile</Text>
+          <Text style={styles.name}>{user?.name ?? "My Travel Profile"}</Text>
+          {user?.email ? (
+            <Text style={styles.email}>{user.email}</Text>
+          ) : null}
           <Text style={styles.subname}>
             {savedItineraries.length} trip{savedItineraries.length !== 1 ? "s" : ""} saved
           </Text>
@@ -313,6 +337,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {user && (
+          <TouchableOpacity
+            onPress={handleSignOut}
+            activeOpacity={0.8}
+            style={styles.signOutBtn}
+          >
+            <Feather name="log-out" size={18} color="#D93025" />
+            <View style={styles.signOutText}>
+              <Text style={styles.signOutLabel}>Sign out</Text>
+              <Text style={styles.signOutSub}>{user.email}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>SeniorTravel v1.0</Text>
           <Text style={styles.footerSub}>Explore the world comfortably</Text>
@@ -368,10 +406,37 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: Colors.light.text,
   },
+  email: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
   subname: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "#FFF5F5",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#FFE0DE",
+  },
+  signOutText: { gap: 2 },
+  signOutLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#D93025",
+  },
+  signOutSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(217,48,37,0.65)",
   },
 
   statsRow: {
