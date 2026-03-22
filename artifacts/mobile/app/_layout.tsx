@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
 import { SavedItinerariesProvider } from "@/context/SavedItinerariesContext";
 
@@ -22,21 +23,27 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { preferences, isLoading } = usePreferences();
+  const { user, isLoading: authLoading } = useAuth();
+  const { preferences, isLoading: prefLoading } = usePreferences();
+
+  const isLoading = authLoading || prefLoading;
 
   useEffect(() => {
-    if (!isLoading) {
-      SplashScreen.hideAsync();
-      if (!preferences.hasCompletedOnboarding) {
-        router.replace("/onboarding");
-      }
+    if (isLoading) return;
+    SplashScreen.hideAsync();
+
+    if (!user) {
+      router.replace("/login");
+    } else if (!preferences.hasCompletedOnboarding) {
+      router.replace("/onboarding");
     }
-  }, [isLoading, preferences.hasCompletedOnboarding]);
+  }, [isLoading, user, preferences.hasCompletedOnboarding]);
 
   if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="login" options={{ animation: "fade" }} />
       <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="swipe/[destinationId]" options={{ animation: "slide_from_bottom" }} />
@@ -66,11 +73,13 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <PreferencesProvider>
-                <SavedItinerariesProvider>
-                  <RootLayoutNav />
-                </SavedItinerariesProvider>
-              </PreferencesProvider>
+              <AuthProvider>
+                <PreferencesProvider>
+                  <SavedItinerariesProvider>
+                    <RootLayoutNav />
+                  </SavedItinerariesProvider>
+                </PreferencesProvider>
+              </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
