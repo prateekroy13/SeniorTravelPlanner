@@ -17,6 +17,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { DestinationCard } from "@/components/DestinationCard";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useAuth } from "@/context/AuthContext";
 import { usePreferences } from "@/context/PreferencesContext";
 
 const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
@@ -36,6 +38,7 @@ async function searchDestinations(query: string) {
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -95,14 +98,23 @@ export default function ExploreScreen() {
         >
           <View style={styles.heroContent}>
             <View style={styles.greetingRow}>
-              <View>
-                <Text style={styles.greeting}>Good day</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.greeting}>
+                  {user?.name ? `Good day, ${user.name.split(" ")[0]}` : "Good day"}
+                </Text>
                 <Text style={styles.heroTitle}>Where would{"\n"}you like to go?</Text>
+                <View style={styles.paceChip}>
+                  <Feather name="sun" size={12} color={Colors.light.primary} />
+                  <Text style={styles.paceLabel}>{paceLabels[preferences.pace]}</Text>
+                </View>
               </View>
-              <View style={styles.paceChip}>
-                <Feather name="sun" size={12} color={Colors.light.primary} />
-                <Text style={styles.paceLabel}>{paceLabels[preferences.pace]}</Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/profile")}
+                activeOpacity={0.8}
+                style={styles.avatarBtn}
+              >
+                <UserAvatar user={user} size={46} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
@@ -299,7 +311,11 @@ const styles = StyleSheet.create({
   greetingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatarBtn: {
+    flexShrink: 0,
   },
   greeting: {
     fontSize: 14,
@@ -321,7 +337,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 4,
+    marginTop: 8,
+    alignSelf: "flex-start",
   },
   paceLabel: {
     fontSize: 11,
