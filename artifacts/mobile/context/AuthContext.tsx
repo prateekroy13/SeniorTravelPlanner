@@ -63,13 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isWeb = Platform.OS === "web";
 
   const [, response, promptAsync] = Google.useAuthRequest(
-    !isWeb && googleClientId
+    googleClientId
       ? {
           clientId: googleClientId,
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
         }
-      : (null as any)
+      : { clientId: "" }
   );
 
   useEffect(() => {
