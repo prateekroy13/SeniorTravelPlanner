@@ -316,6 +316,11 @@ export default function GenerateScreen() {
               <Text style={styles.fullGenLabel}>
                 {isGenerating ? "Generating..." : "Generate Full Itinerary"}
               </Text>
+              {!isGenerating && (
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              )}
             </View>
             {!isGenerating && (
               <View style={styles.fullGenFeatures}>
@@ -620,6 +625,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#fff",
     flex: 1,
+  },
+  proBadge: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  proBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 1,
   },
   fullGenFeatures: {
     flexDirection: "row",

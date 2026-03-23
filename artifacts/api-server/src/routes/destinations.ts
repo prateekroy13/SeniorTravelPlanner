@@ -12,7 +12,7 @@ const DESTINATIONS = [
     highlights: ["Historic trams", "Belém Tower", "Pastéis de Belém", "Sintra day trip"],
     bestMonths: ["April", "May", "September", "October"],
     terrain: "Hilly but manageable, many flat areas near the waterfront",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1555881400-74d7acaacd47?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "rome",
@@ -23,7 +23,7 @@ const DESTINATIONS = [
     highlights: ["Colosseum", "Vatican Museums", "Trevi Fountain", "Trastevere"],
     bestMonths: ["April", "May", "October", "November"],
     terrain: "Mostly flat with some cobblestones in historic center",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1552832272-bade4fd94a84?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "kyoto",
@@ -34,7 +34,7 @@ const DESTINATIONS = [
     highlights: ["Fushimi Inari", "Arashiyama Bamboo Grove", "Kinkakuji", "Gion District"],
     bestMonths: ["March", "April", "October", "November"],
     terrain: "Mostly flat, excellent lifts and accessible facilities",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "amsterdam",
@@ -45,7 +45,7 @@ const DESTINATIONS = [
     highlights: ["Rijksmuseum", "Anne Frank House", "Canal Cruises", "Vondelpark"],
     bestMonths: ["April", "May", "August", "September"],
     terrain: "Extremely flat, excellent accessibility throughout",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1534351590666-13e3e96b5702?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "barcelona",
@@ -56,7 +56,7 @@ const DESTINATIONS = [
     highlights: ["Sagrada Família", "Park Güell", "Las Ramblas", "Gothic Quarter"],
     bestMonths: ["April", "May", "October", "November"],
     terrain: "Mostly flat along the coast, hilly in some areas",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "vienna",
@@ -67,7 +67,7 @@ const DESTINATIONS = [
     highlights: ["Schönbrunn Palace", "St. Stephen's Cathedral", "Vienna State Opera", "Belvedere"],
     bestMonths: ["April", "May", "September", "October"],
     terrain: "Very flat, excellent public transport with full accessibility",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "prague",
@@ -78,7 +78,7 @@ const DESTINATIONS = [
     highlights: ["Prague Castle", "Charles Bridge", "Old Town Square", "Josefov"],
     bestMonths: ["May", "June", "September", "October"],
     terrain: "Hilly with cobblestones, accessible routes available",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1541849546-216549ae216d?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "singapore",
@@ -89,7 +89,7 @@ const DESTINATIONS = [
     highlights: ["Gardens by the Bay", "Marina Bay Sands", "Hawker Centers", "Orchard Road"],
     bestMonths: ["February", "March", "July", "August"],
     terrain: "Extremely flat, world-class accessibility infrastructure",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1525625293386-0f46861c0d8c?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "edinburgh",
@@ -100,7 +100,7 @@ const DESTINATIONS = [
     highlights: ["Edinburgh Castle", "Royal Mile", "Holyrood Palace", "Arthur's Seat"],
     bestMonths: ["May", "June", "July", "August"],
     terrain: "Hilly, but accessible routes and hop-on buses available",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1540245350845-8f20df4c4d97?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "quebec-city",
@@ -111,7 +111,7 @@ const DESTINATIONS = [
     highlights: ["Château Frontenac", "Old Quebec", "Plains of Abraham", "Montmorency Falls"],
     bestMonths: ["June", "July", "September", "October"],
     terrain: "Upper and lower town with funicular for easy access between them",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1467299688547-6c24abe37c87?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "dubrovnik",
@@ -122,7 +122,7 @@ const DESTINATIONS = [
     highlights: ["City Walls Walk", "Cable Car", "Lokrum Island", "Old Town"],
     bestMonths: ["May", "June", "September", "October"],
     terrain: "Cobblestones within walls, cable car available for easier access",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1553152531-b98a2fc8d3bf?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "new-zealand-queenstown",
@@ -133,7 +133,7 @@ const DESTINATIONS = [
     highlights: ["Lake Wakatipu", "Milford Sound Day Trip", "Arrowtown", "Wine Region"],
     bestMonths: ["December", "January", "February", "March"],
     terrain: "Town is flat, many gentle nature walks, scenic drives available",
-    imageUrl: null,
+    imageUrl: "https://images.unsplash.com/photo-1507688829835-2f67e83aac21?auto=format&fit=crop&w=600&q=80",
   },
 ];
 

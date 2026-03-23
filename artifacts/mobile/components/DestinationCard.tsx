@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
+import { Image } from "expo-image";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
@@ -49,7 +50,53 @@ function getGradient(id: string): [string, string] {
   return GRADIENT_PALETTES[Math.abs(hash) % GRADIENT_PALETTES.length];
 }
 
+function CardImageArea({
+  destination,
+  style,
+  children,
+}: {
+  destination: Destination;
+  style: any;
+  children: React.ReactNode;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const gradient = getGradient(destination.id);
+
+  if (destination.imageUrl && !imgError) {
+    return (
+      <View style={[style, { overflow: "hidden" }]}>
+        <Image
+          source={{ uri: destination.imageUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          onError={() => setImgError(true)}
+          transition={300}
+        />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.55)"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        {children}
+      </View>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={gradient}
+      style={style}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      {children}
+    </LinearGradient>
+  );
+}
+
 export function DestinationCard({ destination, onPress, variant = "vertical" }: DestinationCardProps) {
+  const [imgError, setImgError] = useState(false);
   const gradient = getGradient(destination.id);
 
   if (variant === "horizontal") {
@@ -59,9 +106,21 @@ export function DestinationCard({ destination, onPress, variant = "vertical" }: 
         activeOpacity={0.92}
         style={styles.horizontal}
       >
-        <LinearGradient colors={gradient} style={styles.horizontalImage}>
-          <Feather name="map-pin" size={22} color="rgba(255,255,255,0.8)" />
-        </LinearGradient>
+        <View style={styles.horizontalImageWrap}>
+          {destination.imageUrl && !imgError ? (
+            <Image
+              source={{ uri: destination.imageUrl }}
+              style={styles.horizontalImagePhoto}
+              contentFit="cover"
+              onError={() => setImgError(true)}
+              transition={300}
+            />
+          ) : (
+            <LinearGradient colors={gradient} style={styles.horizontalImagePhoto}>
+              <Feather name="map-pin" size={22} color="rgba(255,255,255,0.8)" />
+            </LinearGradient>
+          )}
+        </View>
         <View style={styles.horizontalContent}>
           <Text style={styles.city}>{destination.city}</Text>
           <Text style={styles.country}>{destination.country}</Text>
@@ -80,12 +139,7 @@ export function DestinationCard({ destination, onPress, variant = "vertical" }: 
       activeOpacity={0.92}
       style={styles.card}
     >
-      <LinearGradient
-        colors={gradient}
-        style={styles.cardImage}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <CardImageArea destination={destination} style={styles.cardImage}>
         <View style={styles.scoreOverlay}>
           <Feather name="star" size={12} color="#fff" />
           <Text style={styles.scoreText}>{destination.seniorFriendlyScore}/10</Text>
@@ -94,7 +148,7 @@ export function DestinationCard({ destination, onPress, variant = "vertical" }: 
           <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
           <Text style={styles.locationText}>{destination.country}</Text>
         </View>
-      </LinearGradient>
+      </CardImageArea>
 
       <View style={styles.cardContent}>
         <Text style={styles.city}>{destination.city}</Text>
@@ -136,10 +190,7 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 4 },
       web: {
-        shadowColor: Colors.light.shadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
       },
     }),
   },
@@ -154,7 +205,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.35)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 20,
@@ -242,14 +293,17 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 2 },
       web: {
-        shadowColor: Colors.light.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       },
     }),
   },
-  horizontalImage: {
+  horizontalImageWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  horizontalImagePhoto: {
     width: 52,
     height: 52,
     borderRadius: 12,
