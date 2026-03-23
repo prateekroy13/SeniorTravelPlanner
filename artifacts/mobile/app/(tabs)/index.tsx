@@ -188,7 +188,7 @@ export default function ExploreScreen() {
             <>
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Senior-Friendly Destinations</Text>
+                  <Text style={styles.sectionTitle}>Explore Popular Destinations</Text>
                   <Text style={styles.sectionSub}>Tap a city to discover & swipe top spots</Text>
                 </View>
 

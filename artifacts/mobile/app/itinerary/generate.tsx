@@ -17,7 +17,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePreferences } from "@/context/PreferencesContext";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
 
 const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -293,17 +292,53 @@ export default function GenerateScreen() {
       <View
         style={[
           styles.footer,
-          { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 16 },
+          { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 12 },
         ]}
       >
-        <PrimaryButton
-          label={isGenerating ? "Generating..." : "Generate Itinerary"}
+        <TouchableOpacity
           onPress={handleGenerate}
-          loading={isGenerating}
+          activeOpacity={0.88}
           disabled={!canGenerate || isGenerating}
-          size="lg"
-          style={styles.generateBtn}
-        />
+          style={[styles.fullGenBtn, (!canGenerate || isGenerating) && styles.fullGenBtnDisabled]}
+        >
+          <LinearGradient
+            colors={isGenerating ? ["#8a6a2a", "#6a4e1a"] : [Colors.light.accent, "#C07828"]}
+            style={styles.fullGenInner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.fullGenTop}>
+              {isGenerating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Feather name="star" size={18} color="#fff" />
+              )}
+              <Text style={styles.fullGenLabel}>
+                {isGenerating ? "Generating..." : "Generate Full Itinerary"}
+              </Text>
+            </View>
+            {!isGenerating && (
+              <View style={styles.fullGenFeatures}>
+                {["🏨 Hotels", "🚌 Transport", "⏰ Timings", "🎫 Guide pricing"].map((f) => (
+                  <View key={f} style={styles.featurePill}>
+                    <Text style={styles.featurePillText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleGenerate}
+          activeOpacity={0.75}
+          disabled={!canGenerate || isGenerating}
+          style={styles.simpleGenBtn}
+        >
+          <Text style={[styles.simpleGenText, (!canGenerate || isGenerating) && { opacity: 0.4 }]}>
+            Generate basic itinerary
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -558,12 +593,61 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
+    gap: 10,
     backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.light.borderLight,
   },
   generateBtn: { width: "100%" },
+  fullGenBtn: {
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  fullGenBtnDisabled: { opacity: 0.5 },
+  fullGenInner: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  fullGenTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  fullGenLabel: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    flex: 1,
+  },
+  fullGenFeatures: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  featurePill: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  featurePillText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
+  },
+  simpleGenBtn: {
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  simpleGenText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textSecondary,
+    textDecorationLine: "underline",
+    textDecorationColor: Colors.light.textTertiary,
+  },
 });
 
 const prefStyles = StyleSheet.create({

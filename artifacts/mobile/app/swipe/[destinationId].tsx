@@ -100,6 +100,18 @@ export default function SwipeScreen() {
     });
   };
 
+  const handleSkipToItinerary = () => {
+    router.push({
+      pathname: "/itinerary/generate",
+      params: {
+        city: city || "",
+        country: country || "",
+        likedAttractions: liked.map((a) => a.name).join(","),
+        likedRestaurants: "",
+      },
+    });
+  };
+
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -138,6 +150,7 @@ export default function SwipeScreen() {
         city={city || ""}
         country={country || ""}
         onPlan={handlePlanTrip}
+        onSkipRestaurants={handleSkipToItinerary}
         onBack={handleBack}
         topPadding={topPadding}
         bottomPadding={bottomPadding}
@@ -357,10 +370,10 @@ function StatPill({ icon, value, label, highlight }: {
 }
 
 function ResultScreen({
-  liked, city, country, onPlan, onBack, topPadding, bottomPadding,
+  liked, city, country, onPlan, onSkipRestaurants, onBack, topPadding, bottomPadding,
 }: {
   liked: Attraction[]; city: string; country: string;
-  onPlan: () => void; onBack: () => void;
+  onPlan: () => void; onSkipRestaurants: () => void; onBack: () => void;
   topPadding: number; bottomPadding: number;
 }) {
   return (
@@ -430,6 +443,11 @@ function ResultScreen({
             </View>
             <Feather name="arrow-right" size={18} color="#fff" />
           </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onSkipRestaurants} activeOpacity={0.8} style={resultStyles.skipRestBtn}>
+          <Feather name="skip-forward" size={15} color={Colors.light.primary} />
+          <Text style={resultStyles.skipRestText}>Skip restaurants — go straight to planning</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onBack} style={resultStyles.skipBtn}>
@@ -824,6 +842,23 @@ const resultStyles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.7)",
     marginTop: 1,
+  },
+  skipRestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: "rgba(26,107,74,0.12)",
+    borderWidth: 1.5,
+    borderColor: "rgba(26,107,74,0.25)",
+  },
+  skipRestText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.primary,
   },
   skipBtn: {
     alignItems: "center",
