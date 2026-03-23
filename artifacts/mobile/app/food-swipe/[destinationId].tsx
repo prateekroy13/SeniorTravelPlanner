@@ -27,21 +27,41 @@ import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePreferences } from "@/context/PreferencesContext";
 
-const CUISINE_IMAGES: Record<string, string> = {
-  "Portuguese":   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Italian":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Japanese":     "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
-  "Dutch":        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Catalan":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Austrian":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Czech":        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Singaporean":  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
-  "Scottish":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "French":       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Croatian":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "New Zealand":  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
-  "default":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+const FOOD_IMAGES = {
+  seafood:    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
+  asian:      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+  asian2:     "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80",
+  italian:    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80",
+  fine:       "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80",
+  cafe:       "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80",
+  bakery:     "https://images.unsplash.com/photo-1484980972926-edee96e0960d?auto=format&fit=crop&w=800&q=80",
+  pub:        "https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=800&q=80",
+  plates:     "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=800&q=80",
+  restaurant: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
 };
+
+function getCuisineImage(cuisine: string): string {
+  const c = cuisine.toLowerCase();
+  if (c.includes("fine dining") || c.includes("michelin") || c.includes("tasting menu") || c.includes("haute") || c.includes("avant-garde"))
+    return FOOD_IMAGES.fine;
+  if (c.includes("café") || c.includes("cafe") || c.includes("coffee") || c.includes("coffeehouse") || c.includes("viennese"))
+    return FOOD_IMAGES.cafe;
+  if (c.includes("seafood") || c.includes("shellfish") || c.includes("beerhouse") || c.includes("crab") || c.includes("prawn"))
+    return FOOD_IMAGES.seafood;
+  if (c.includes("bakery") || c.includes("bread") || c.includes("pastry") || c.includes("patisserie") || c.includes("pancake") || c.includes("deli"))
+    return FOOD_IMAGES.bakery;
+  if (c.includes("pub") || c.includes("tavern") || c.includes("beer") || c.includes("czech") || c.includes("bierhaus"))
+    return FOOD_IMAGES.pub;
+  if (c.includes("italian") || c.includes("pasta") || c.includes("trattoria") || c.includes("roman") || c.includes("pizza"))
+    return FOOD_IMAGES.italian;
+  if (c.includes("japanese") || c.includes("sushi") || c.includes("ramen") || c.includes("kaiseki") || c.includes("tofu") || c.includes("izakaya"))
+    return FOOD_IMAGES.asian;
+  if (c.includes("hawker") || c.includes("satay") || c.includes("street food") || c.includes("singaporean") || c.includes("peranakan") || c.includes("asian") || c.includes("chinese") || c.includes("thai") || c.includes("korean"))
+    return FOOD_IMAGES.asian2;
+  if (c.includes("french") || c.includes("bistro") || c.includes("brasserie") || c.includes("tapas") || c.includes("catalan") || c.includes("wine bar") || c.includes("farm"))
+    return FOOD_IMAGES.plates;
+  return FOOD_IMAGES.restaurant;
+}
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
@@ -370,7 +390,7 @@ function FoodCard({
 
   const price = PRICE_LABELS[restaurant.priceLevel];
   const isBudgetMatch = restaurant.priceLevel === userBudgetLevel;
-  const imgUrl = CUISINE_IMAGES[restaurant.cuisine] ?? CUISINE_IMAGES["default"];
+  const imgUrl = getCuisineImage(restaurant.cuisine);
 
   return (
     <GestureDetector gesture={pan}>
