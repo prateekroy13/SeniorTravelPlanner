@@ -26,22 +26,19 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
-const CATEGORY_IMAGES: Record<string, string> = {
-  "Historic":           "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=800&q=80",
-  "Architecture":       "https://images.unsplash.com/photo-1467803738586-46b7eb7b16a1?auto=format&fit=crop&w=800&q=80",
-  "Art":                "https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?auto=format&fit=crop&w=800&q=80",
-  "Art & Culture":      "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
-  "Culture":            "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=800&q=80",
-  "Museum":             "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80",
-  "Nature":             "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80",
-  "Nature & History":   "https://images.unsplash.com/photo-1482398650355-d4c6462afa0e?auto=format&fit=crop&w=800&q=80",
-  "Nature & Architecture": "https://images.unsplash.com/photo-1482398650355-d4c6462afa0e?auto=format&fit=crop&w=800&q=80",
-  "Food":               "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Food & Shopping":    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
-  "Food & Culture":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-  "Experience":         "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=800&q=80",
-  "Beach":              "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=800&q=80",
-  "default":            "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80",
+const DESTINATION_SPOT_IMAGES: Record<string, string> = {
+  "lisbon":                   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
+  "rome":                     "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=800&q=80",
+  "kyoto":                    "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80",
+  "amsterdam":                "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=800&q=80",
+  "barcelona":                "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=800&q=80",
+  "vienna":                   "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?auto=format&fit=crop&w=800&q=80",
+  "prague":                   "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80",
+  "singapore":                "https://images.unsplash.com/photo-1509356843151-3e7d96241e11?auto=format&fit=crop&w=800&q=80",
+  "edinburgh":                "https://images.unsplash.com/photo-1596394723269-b2cbca4e6313?auto=format&fit=crop&w=800&q=80",
+  "quebec-city":              "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=800&q=80",
+  "dubrovnik":                "https://images.unsplash.com/photo-1549180030-48bf079fb38a?auto=format&fit=crop&w=800&q=80",
+  "new-zealand-queenstown":   "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=800&q=80",
 };
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -233,6 +230,7 @@ export default function SwipeScreen() {
           <SwipeCard
             key={currentIndex}
             attraction={currentCard}
+            destinationId={destinationId ?? ""}
             onLike={() => handleSwipeAction("like", currentCard)}
             onReject={() => handleSwipeAction("reject", currentCard)}
           />
@@ -264,10 +262,12 @@ export default function SwipeScreen() {
 
 function SwipeCard({
   attraction,
+  destinationId,
   onLike,
   onReject,
 }: {
   attraction: Attraction;
+  destinationId: string;
   onLike: () => void;
   onReject: () => void;
 }) {
@@ -323,7 +323,8 @@ function SwipeCard({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], "clamp"),
   }));
 
-  const imgUrl = CATEGORY_IMAGES[attraction.category] ?? CATEGORY_IMAGES["default"];
+  const imgUrl = DESTINATION_SPOT_IMAGES[destinationId]
+    ?? "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80";
 
   return (
     <GestureDetector gesture={pan}>

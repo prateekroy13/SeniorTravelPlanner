@@ -46,7 +46,7 @@ function getCuisineImage(cuisine: string): string {
     return FOOD_IMAGES.fine;
   if (c.includes("café") || c.includes("cafe") || c.includes("coffee") || c.includes("coffeehouse") || c.includes("viennese"))
     return FOOD_IMAGES.cafe;
-  if (c.includes("seafood") || c.includes("shellfish") || c.includes("beerhouse") || c.includes("crab") || c.includes("prawn"))
+  if (c.includes("seafood") || c.includes("shellfish") || c.includes("beerhouse") || c.includes("crab") || c.includes("prawn") || c.includes("conserva") || c.includes("tinned"))
     return FOOD_IMAGES.seafood;
   if (c.includes("bakery") || c.includes("bread") || c.includes("pastry") || c.includes("patisserie") || c.includes("pancake") || c.includes("deli"))
     return FOOD_IMAGES.bakery;
@@ -58,7 +58,9 @@ function getCuisineImage(cuisine: string): string {
     return FOOD_IMAGES.asian;
   if (c.includes("hawker") || c.includes("satay") || c.includes("street food") || c.includes("singaporean") || c.includes("peranakan") || c.includes("asian") || c.includes("chinese") || c.includes("thai") || c.includes("korean"))
     return FOOD_IMAGES.asian2;
-  if (c.includes("french") || c.includes("bistro") || c.includes("brasserie") || c.includes("tapas") || c.includes("catalan") || c.includes("wine bar") || c.includes("farm"))
+  if (c.includes("french") || c.includes("brasserie") || c.includes("tapas") || c.includes("catalan") || c.includes("wine bar") || c.includes("farm"))
+    return FOOD_IMAGES.plates;
+  if (c.includes("portuguese") || c.includes("fado") || c.includes("traditional") || c.includes("bistro"))
     return FOOD_IMAGES.plates;
   return FOOD_IMAGES.restaurant;
 }
