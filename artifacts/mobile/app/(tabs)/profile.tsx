@@ -81,7 +81,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { preferences, updatePreferences } = usePreferences();
   const { savedItineraries } = useSavedItineraries();
-  const { user, signOut } = useAuth();
+  const { user, signOut, signInWithGoogle, signingIn, hasGoogleClientId } = useAuth();
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -166,6 +166,38 @@ export default function ProfileScreen() {
           <StatChip icon="tag" label={BUDGET_OPTIONS.find(b => b.value === preferences.budgetLevel)?.label ?? "Mid-Range"} />
           <StatChip icon="map" label={`${savedItineraries.length} trip${savedItineraries.length !== 1 ? "s" : ""}`} />
         </View>
+
+        {!user && (
+          <TouchableOpacity
+            style={styles.signInCard}
+            activeOpacity={0.85}
+            onPress={async () => {
+              if (hasGoogleClientId) {
+                try { await signInWithGoogle(); } catch {}
+              } else {
+                router.replace("/login");
+              }
+            }}
+            disabled={signingIn}
+          >
+            <View style={styles.signInCardLeft}>
+              <View style={styles.signInIconBox}>
+                <Feather name="user" size={22} color={Colors.light.primary} />
+              </View>
+              <View style={styles.signInCardText}>
+                <Text style={styles.signInCardTitle}>Sign in to sync your trips</Text>
+                <Text style={styles.signInCardSub}>Save itineraries across devices with Google</Text>
+              </View>
+            </View>
+            {signingIn ? (
+              <ActivityIndicator size="small" color={Colors.light.primary} />
+            ) : (
+              <View style={styles.signInArrow}>
+                <Feather name="chevron-right" size={20} color={Colors.light.primary} />
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         <SectionHeader title="Travel Pace" subtitle="How much walking are you comfortable with each day?" />
         <View style={styles.paceGrid}>
@@ -443,6 +475,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.light.textSecondary,
+  },
+  signInCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F0F8F4",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#C8E6D9",
+    marginBottom: 8,
+  },
+  signInCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  signInIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#D6EFE3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  signInCardText: { flex: 1, gap: 2 },
+  signInCardTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.primary,
+  },
+  signInCardSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+  },
+  signInArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#D6EFE3",
+    alignItems: "center",
+    justifyContent: "center",
   },
   signOutBtn: {
     flexDirection: "row",
