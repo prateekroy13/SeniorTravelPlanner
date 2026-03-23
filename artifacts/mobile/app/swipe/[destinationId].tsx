@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -24,6 +25,24 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+
+const CATEGORY_IMAGES: Record<string, string> = {
+  "Historic":           "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=800&q=80",
+  "Architecture":       "https://images.unsplash.com/photo-1467803738586-46b7eb7b16a1?auto=format&fit=crop&w=800&q=80",
+  "Art":                "https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?auto=format&fit=crop&w=800&q=80",
+  "Art & Culture":      "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
+  "Culture":            "https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=800&q=80",
+  "Museum":             "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80",
+  "Nature":             "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80",
+  "Nature & History":   "https://images.unsplash.com/photo-1482398650355-d4c6462afa0e?auto=format&fit=crop&w=800&q=80",
+  "Nature & Architecture": "https://images.unsplash.com/photo-1482398650355-d4c6462afa0e?auto=format&fit=crop&w=800&q=80",
+  "Food":               "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Food & Shopping":    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+  "Food & Culture":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Experience":         "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=800&q=80",
+  "Beach":              "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=800&q=80",
+  "default":            "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80",
+};
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
@@ -304,15 +323,24 @@ function SwipeCard({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], "clamp"),
   }));
 
+  const imgUrl = CATEGORY_IMAGES[attraction.category] ?? CATEGORY_IMAGES["default"];
+
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, cardStyle]}>
-        <LinearGradient
-          colors={attraction.gradient}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.cardGradient}>
+          <Image
+            source={{ uri: imgUrl }}
+            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+            contentFit="cover"
+          />
+          <LinearGradient
+            colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.72)"]}
+            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+
           <Animated.View style={[styles.stampContainer, { left: 24 }, likeOpacity]}>
             <View style={styles.likeStamp}>
               <Feather name="heart" size={24} color="#FF6B9D" />
@@ -351,7 +379,7 @@ function SwipeCard({
             <Text style={styles.cardHintText}>skip · swipe · love</Text>
             <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.25)" />
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
     </GestureDetector>
   );

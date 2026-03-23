@@ -23,8 +23,25 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import Colors from "@/constants/colors";
 import { usePreferences } from "@/context/PreferencesContext";
+
+const CUISINE_IMAGES: Record<string, string> = {
+  "Portuguese":   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Italian":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Japanese":     "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+  "Dutch":        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Catalan":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Austrian":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Czech":        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Singaporean":  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+  "Scottish":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "French":       "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "Croatian":     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+  "New Zealand":  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
+  "default":      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+};
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
@@ -353,16 +370,23 @@ function FoodCard({
 
   const price = PRICE_LABELS[restaurant.priceLevel];
   const isBudgetMatch = restaurant.priceLevel === userBudgetLevel;
+  const imgUrl = CUISINE_IMAGES[restaurant.cuisine] ?? CUISINE_IMAGES["default"];
 
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, cardStyle]}>
-        <LinearGradient
-          colors={restaurant.gradient}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.cardGradient}>
+          <Image
+            source={{ uri: imgUrl }}
+            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+            contentFit="cover"
+          />
+          <LinearGradient
+            colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.75)"]}
+            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
           <Animated.View style={[styles.stampContainer, { left: 24 }, likeOpacity]}>
             <View style={styles.likeStamp}>
               <Feather name="heart" size={24} color="#FF6B9D" />
@@ -436,7 +460,7 @@ function FoodCard({
             <Text style={styles.cardHintText}>skip · swipe · love</Text>
             <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.25)" />
           </View>
-        </LinearGradient>
+        </View>
       </Animated.View>
     </GestureDetector>
   );

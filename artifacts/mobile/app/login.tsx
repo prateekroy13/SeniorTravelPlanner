@@ -40,7 +40,23 @@ export default function LoginScreen() {
     try {
       await signInWithGoogle();
     } catch (e: any) {
-      setError("Sign-in failed. Please try again.");
+      const msg = String(e?.message ?? "");
+      if (
+        msg.includes("origin") ||
+        msg.includes("client") ||
+        msg.includes("mismatch") ||
+        msg.includes("disallowed_useragent")
+      ) {
+        const domain =
+          typeof window !== "undefined" ? window.location.hostname : "";
+        setError(
+          `Google sign-in is blocked on this domain.\n\nTo fix: go to Google Cloud Console → Your OAuth Client → Authorized JavaScript Origins → add:\nhttps://${domain}`
+        );
+      } else if (msg.includes("popup") || msg.includes("closed")) {
+        setError("Sign-in popup was closed. Please try again.");
+      } else {
+        setError("Sign-in failed. Please try again.");
+      }
     }
   };
 
