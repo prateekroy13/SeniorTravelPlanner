@@ -6,7 +6,8 @@ import { Platform } from "react-native";
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
-const API_BASE = "https://seniortravel.replit.app/api";
+const OAUTH_CALLBACK_URL = "https://seniortravel.replit.app/oauth-callback";
+const OAUTH_APP_REDIRECT = "exps://seniortravel.replit.app/oauth-callback";
 
 export interface AuthUser {
   id: string;
@@ -61,9 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasGoogleClientId = !!googleClientId;
   const isWeb = Platform.OS === "web";
 
-  const redirectUri = isWeb
-    ? ""
-    : `${API_BASE}/auth/google-callback`;
+  const redirectUri = isWeb ? "" : OAUTH_CALLBACK_URL;
 
   useEffect(() => {
     loadStoredUser();
@@ -130,27 +129,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
     try {
-      const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-
-      const appRedirect = Platform.OS === "android"
-        ? "exps://seniortravel.replit.app"
-        : "exps://seniortravel.replit.app";
-
-      const initiateUrl =
-        `${API_BASE}/auth/google-initiate` +
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth` +
         `?client_id=${encodeURIComponent(googleClientId)}` +
-        `&session_id=${encodeURIComponent(sessionId)}` +
-        `&app_redirect=${encodeURIComponent(appRedirect)}`;
+        `&redirect_uri=${encodeURIComponent(OAUTH_CALLBACK_URL)}` +
+        `&response_type=token` +
+        `&scope=${encodeURIComponent("openid email profile")}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(initiateUrl, appRedirect);
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, OAUTH_APP_REDIRECT);
 
       if (result.type === "success" && result.url) {
         const parsed = new URL(result.url);
-        const sid = parsed.searchParams.get("session");
-        if (!sid) throw new Error("No session ID returned");
+        const token = parsed.searchParams.get("token");
+        if (!token) throw new Error("No token returned from sign-in");
 
-        const resp = await fetch(`${API_BASE}/auth/session/${encodeURIComponent(sid)}`);
-        if (!resp.ok) throw new Error("Session expired or not found");
+        const resp = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+          headers: { Authorization: `Bearer ${decodeURIComponent(token)}` },
+        });
+        if (!resp.ok) throw new Error("Failed to fetch user info");
         const data = await resp.json();
         await saveUser(data);
       } else if (result.type === "cancel" || result.type === "dismiss") {

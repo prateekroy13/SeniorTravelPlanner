@@ -125,7 +125,7 @@ export default function LoginScreen() {
             </Text>
             <View style={styles.redirectUri}>
               <Text style={styles.redirectUriText} selectable>
-                https://seniortravel.replit.app/api/auth/google-callback
+                https://seniortravel.replit.app/oauth-callback
               </Text>
             </View>
             <Text style={styles.redirectHint}>
