@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
@@ -62,12 +63,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isWeb = Platform.OS === "web";
 
+  const redirectUri = isWeb
+    ? ""
+    : AuthSession.makeRedirectUri({ scheme: "mobile" });
+
   const [, response, promptAsync] = Google.useAuthRequest(
     googleClientId
       ? {
           clientId: googleClientId,
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+          redirectUri: isWeb ? undefined : redirectUri,
         }
       : { clientId: "" }
   );
@@ -159,8 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(AUTH_KEY);
     setUser(null);
   };
-
-  const redirectUri = "";
 
   return (
     <AuthContext.Provider

@@ -26,8 +26,9 @@ function GoogleIcon() {
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId } = useAuth();
+  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId, redirectUri } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const isNative = Platform.OS !== "web";
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -113,6 +114,22 @@ export default function LoginScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+
+        {isNative && hasGoogleClientId && redirectUri ? (
+          <View style={styles.redirectBox}>
+            <Text style={styles.redirectTitle}>🔧 Google Console Setup Required</Text>
+            <Text style={styles.redirectBody}>
+              Add this exact URI to{"\n"}
+              <Text style={styles.redirectBold}>Google Cloud Console → OAuth Client → Authorized Redirect URIs</Text>
+            </Text>
+            <View style={styles.redirectUri}>
+              <Text style={styles.redirectUriText} selectable>{redirectUri}</Text>
+            </View>
+            <Text style={styles.redirectHint}>
+              Long-press the URI above to copy it.
+            </Text>
+          </View>
+        ) : null}
 
         {!hasGoogleClientId && (
           <View style={styles.noKeyNotice}>
@@ -275,6 +292,52 @@ const styles = StyleSheet.create({
     color: Colors.light.accent,
     textAlign: "center",
     lineHeight: 19,
+  },
+  redirectBox: {
+    backgroundColor: "rgba(26,107,74,0.15)",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(26,107,74,0.4)",
+    marginBottom: 8,
+    gap: 6,
+  },
+  redirectTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#6fcf97",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  redirectBody: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#8aad96",
+    textAlign: "center",
+    lineHeight: 17,
+  },
+  redirectBold: {
+    fontFamily: "Inter_600SemiBold",
+    color: "#6fcf97",
+  },
+  redirectUri: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 4,
+  },
+  redirectUriText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#E8A951",
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  redirectHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#5a7a64",
+    textAlign: "center",
   },
   googleBtn: {
     flexDirection: "row",
