@@ -115,15 +115,18 @@ export default function LoginScreen() {
           </View>
         )}
 
-        {isNative && hasGoogleClientId && redirectUri ? (
+        {isNative && hasGoogleClientId ? (
           <View style={styles.redirectBox}>
             <Text style={styles.redirectTitle}>🔧 Google Console Setup Required</Text>
             <Text style={styles.redirectBody}>
-              Add this exact URI to{"\n"}
-              <Text style={styles.redirectBold}>Google Cloud Console → OAuth Client → Authorized Redirect URIs</Text>
+              Add this to{" "}
+              <Text style={styles.redirectBold}>Authorized Redirect URIs</Text>
+              {"\n"}(not JavaScript Origins):
             </Text>
             <View style={styles.redirectUri}>
-              <Text style={styles.redirectUriText} selectable>{redirectUri}</Text>
+              <Text style={styles.redirectUriText} selectable>
+                https://seniortravel.replit.app/api/auth/google-callback
+              </Text>
             </View>
             <Text style={styles.redirectHint}>
               Long-press the URI above to copy it.
