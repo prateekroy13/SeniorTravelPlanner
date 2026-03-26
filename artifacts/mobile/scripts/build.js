@@ -136,10 +136,19 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
 
   console.log("Starting Metro...");
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
+  // EXPO_PUBLIC_CALLBACK_DOMAIN is always the dev domain (janeway.replit.dev)
+  // because it's the only domain where web HTTP is properly routed to serve.js.
+  // seniortravel.replit.app uses expo-domain router which blocks normal HTTP.
+  const callbackDomain =
+    process.env.REPLIT_DEV_DOMAIN ||
+    process.env.REPLIT_INTERNAL_APP_DOMAIN ||
+    expoPublicDomain;
+
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    EXPO_PUBLIC_CALLBACK_DOMAIN: callbackDomain,
   };
 
   if (expoPublicReplId) {

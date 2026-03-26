@@ -7,11 +7,15 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
 
-// Use the same domain the app uses for API calls (baked in at build time by build.js).
-// In dev: REPLIT_DEV_DOMAIN. In prod: REPLIT_INTERNAL_APP_DOMAIN.
-// This domain has correct HTTP routing to our serve.js, unlike seniortravel.replit.app.
-const _appDomain = process.env.EXPO_PUBLIC_DOMAIN || "seniortravel.replit.app";
-const OAUTH_CALLBACK_URL = `https://${_appDomain}/oauth-callback`;
+// EXPO_PUBLIC_CALLBACK_DOMAIN is the janeway.replit.dev domain — the only domain
+// that correctly routes web HTTP requests to serve.js (seniortravel.replit.app
+// uses expo-domain router that blocks normal browser HTTP).
+// Set by the dev script and build.js from REPLIT_DEV_DOMAIN.
+const _callbackDomain =
+  process.env.EXPO_PUBLIC_CALLBACK_DOMAIN ||
+  process.env.EXPO_PUBLIC_DOMAIN ||
+  "seniortravel.replit.app";
+const OAUTH_CALLBACK_URL = `https://${_callbackDomain}/oauth-callback`;
 const OAUTH_APP_REDIRECT = "exps://seniortravel.replit.app/oauth-callback";
 
 export interface AuthUser {
@@ -144,8 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await WebBrowser.openAuthSessionAsync(authUrl, OAUTH_APP_REDIRECT);
 
       if (result.type === "success" && result.url) {
-        const parsed = new URL(result.url);
-        const token = parsed.searchParams.get("token");
+        // new URL() may throw on custom schemes (exps://) in some JS environments
+        let token: string | null = null;
+        try {
+          token = new URL(result.url).searchParams.get("token");
+        } catch {
+          const m = result.url.match(/[?&]token=([^&]+)/);
+          token = m ? decodeURIComponent(m[1]) : null;
+        }
         if (!token) throw new Error("No token returned from sign-in");
 
         const resp = await fetch("https://www.googleapis.com/userinfo/v2/me", {
