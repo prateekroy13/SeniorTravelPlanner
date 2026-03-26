@@ -107,12 +107,59 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
+const OAUTH_CALLBACK_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Completing sign-in\u2026</title>
+  <style>
+    body{font-family:-apple-system,sans-serif;background:#071209;color:#f0ede8;
+         display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+    .card{text-align:center;padding:40px 24px;max-width:320px}
+    .spinner{width:40px;height:40px;border:3px solid #1A6B4A40;border-top-color:#1A6B4A;
+             border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    p{color:#8aad96;font-size:15px;margin:0}
+    .err{color:#FF6B6B}
+  </style>
+</head>
+<body>
+<div class="card" id="root">
+  <div class="spinner"></div>
+  <p>Completing sign-in\u2026</p>
+</div>
+<script>
+(function(){
+  function show(msg,isErr){
+    document.getElementById('root').innerHTML='<p class="'+(isErr?'err':'')+'">'+ msg+'</p>';
+  }
+  var hash=window.location.hash.replace(/^#/,'');
+  var params=new URLSearchParams(hash);
+  var token=params.get('access_token');
+  var error=params.get('error');
+  if(error){show('Sign-in failed: '+error,true);return;}
+  if(!token){show('No access token \u2014 please try again.',true);return;}
+  show('Sign-in successful! Returning to app\u2026');
+  window.location.href='exps://seniortravel.replit.app/oauth-callback?token='+encodeURIComponent(token);
+})();
+</script>
+</body>
+</html>`;
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   let pathname = url.pathname;
 
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
+  }
+
+  // OAuth callback bridge — reads access_token from hash and redirects to Expo app
+  if (pathname === "/oauth-callback") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(OAUTH_CALLBACK_HTML);
+    return;
   }
 
   if (pathname === "/" || pathname === "/manifest") {
@@ -124,6 +171,15 @@ const server = http.createServer((req, res) => {
     if (pathname === "/") {
       return serveLandingPage(req, res, landingPageTemplate, appName);
     }
+  }
+
+  // Try serving pathname/index.html if pathname is a directory
+  const directIndex = path.join(STATIC_ROOT, pathname, "index.html");
+  if (fs.existsSync(directIndex)) {
+    const content = fs.readFileSync(directIndex);
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(content);
+    return;
   }
 
   serveStaticFile(pathname, res);
