@@ -155,6 +155,13 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(basePath.length) || "/";
   }
 
+  // Health check — required by artifact.toml ensurePreviewReachable
+  if (pathname === "/status") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+    return;
+  }
+
   // OAuth callback bridge — reads access_token from hash and redirects to Expo app
   if (pathname === "/oauth-callback") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });

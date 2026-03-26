@@ -6,7 +6,12 @@ import { Platform } from "react-native";
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
-const OAUTH_CALLBACK_URL = "https://seniortravel.replit.app/oauth-callback";
+
+// Use the same domain the app uses for API calls (baked in at build time by build.js).
+// In dev: REPLIT_DEV_DOMAIN. In prod: REPLIT_INTERNAL_APP_DOMAIN.
+// This domain has correct HTTP routing to our serve.js, unlike seniortravel.replit.app.
+const _appDomain = process.env.EXPO_PUBLIC_DOMAIN || "seniortravel.replit.app";
+const OAUTH_CALLBACK_URL = `https://${_appDomain}/oauth-callback`;
 const OAUTH_APP_REDIRECT = "exps://seniortravel.replit.app/oauth-callback";
 
 export interface AuthUser {
