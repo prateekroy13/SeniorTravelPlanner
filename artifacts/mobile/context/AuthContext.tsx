@@ -7,14 +7,13 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
 
-// EXPO_PUBLIC_CALLBACK_DOMAIN is the janeway.replit.dev domain — the only domain
-// that correctly routes web HTTP requests to serve.js (seniortravel.replit.app
-// uses expo-domain router that blocks normal browser HTTP).
-// Set by the dev script and build.js from REPLIT_DEV_DOMAIN.
+// EXPO_PUBLIC_DOMAIN is baked in at build time:
+//   dev build  → REPLIT_DEV_DOMAIN  (janeway.replit.dev — routes HTTP correctly)
+//   prod build → REPLIT_INTERNAL_APP_DOMAIN (senior-travel-planner.replit.app — routes HTTP correctly)
+// Both domains correctly serve /oauth-callback via serve.js.
+// NOTE: seniortravel.replit.app is the Expo-protocol delivery domain and does NOT route HTTP.
 const _callbackDomain =
-  process.env.EXPO_PUBLIC_CALLBACK_DOMAIN ||
-  process.env.EXPO_PUBLIC_DOMAIN ||
-  "seniortravel.replit.app";
+  process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const OAUTH_CALLBACK_URL = `https://${_callbackDomain}/oauth-callback`;
 const OAUTH_APP_REDIRECT = "exps://seniortravel.replit.app/oauth-callback";
 
