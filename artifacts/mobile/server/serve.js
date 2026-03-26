@@ -107,7 +107,10 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
-const OAUTH_CALLBACK_HTML = `<!DOCTYPE html>
+// Template — HOST is replaced at request time with the actual serving host
+// so the exps:// redirect uses the SAME host the Expo app is running from.
+// If the hosts differ, Android Expo Go tries to load a new app and crashes.
+const OAUTH_CALLBACK_HTML_TEMPLATE = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
@@ -141,7 +144,9 @@ const OAUTH_CALLBACK_HTML = `<!DOCTYPE html>
   if(error){show('Sign-in failed: '+error,true);return;}
   if(!token){show('No access token \u2014 please try again.',true);return;}
   show('Sign-in successful! Returning to app\u2026');
-  window.location.href='exps://seniortravel.replit.app/oauth-callback?token='+encodeURIComponent(token);
+  // __HOST__ is replaced server-side — must match the Expo server host
+  // so Android Expo Go treats this as an in-app deep link, not a new app load.
+  window.location.href='exps://__HOST__/oauth-callback?token='+encodeURIComponent(token);
 })();
 </script>
 </body>
@@ -162,10 +167,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // OAuth callback bridge — reads access_token from hash and redirects to Expo app
+  // OAuth callback bridge — reads access_token from hash and redirects to Expo app.
+  // The exps:// host MUST match the host this server is running on, otherwise
+  // Android Expo Go treats it as a new app to load (and crashes on download).
   if (pathname === "/oauth-callback") {
+    const host =
+      req.headers["x-forwarded-host"] ||
+      req.headers["host"] ||
+      "senior-travel-planner.replit.app";
+    const html = OAUTH_CALLBACK_HTML_TEMPLATE.replace(/__HOST__/g, host);
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    res.end(OAUTH_CALLBACK_HTML);
+    res.end(html);
     return;
   }
 

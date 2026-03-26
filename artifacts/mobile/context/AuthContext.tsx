@@ -15,7 +15,10 @@ const AUTH_KEY = "@seniortravel_auth";
 const _callbackDomain =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const OAUTH_CALLBACK_URL = `https://${_callbackDomain}/oauth-callback`;
-const OAUTH_APP_REDIRECT = "exps://seniortravel.replit.app/oauth-callback";
+// MUST use the same host as _callbackDomain. Android Expo Go checks if the exps://
+// host matches the current Expo server host. A different host = Expo tries to load
+// a new app and crashes with "Failed to download remote update".
+const OAUTH_APP_REDIRECT = `exps://${_callbackDomain}/oauth-callback`;
 
 export interface AuthUser {
   id: string;

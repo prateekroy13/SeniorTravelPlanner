@@ -21,8 +21,12 @@ export default function OAuthCallbackPage() {
 
     if (token) {
       setStatus("redirecting");
+      // Use EXPO_PUBLIC_DOMAIN so the exps:// host matches the running Expo server.
+      // A mismatched host causes Android Expo Go to attempt loading a new app (crash).
+      const callbackDomain =
+        process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
       const appUrl =
-        `exps://seniortravel.replit.app/oauth-callback` +
+        `exps://${callbackDomain}/oauth-callback` +
         `?token=${encodeURIComponent(token)}`;
       window.location.href = appUrl;
     } else {
