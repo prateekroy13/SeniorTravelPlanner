@@ -117,7 +117,13 @@ router.get("/auth/google-callback", (_req, res) => {
   .then(function(r){return r.json();})
   .then(function(data){
     if(data.ok){
-      show('\u2705','Signed in!','You can now return to the app.',false);
+      show('\u2705','Signed in!','Returning to app\u2026',false);
+      // Redirect back to the Expo app using exps:// scheme.
+      // window.location.host is the ACTUAL serving host (e.g. senior-travel-planner.replit.app),
+      // so the redirect matches the running Expo server — no "Failed to download" crash.
+      setTimeout(function(){
+        window.location.href='exps://'+window.location.host+'/auth-done?session='+encodeURIComponent(sessionId);
+      },400);
     } else {
       show('\u26a0\ufe0f','Sign-in failed','Could not save session. Please try again.',true);
     }

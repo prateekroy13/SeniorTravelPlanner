@@ -15,6 +15,12 @@ const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const API_BASE = `https://${API_DOMAIN}`;
 
+// The callback page redirects to this after storing the session.
+// Using the SAME host as the running Expo server so Android Expo Go treats
+// it as an in-app deep link (not a new app to load → no crash).
+// openAuthSessionAsync monitors for this URL to auto-close the browser.
+const AUTH_DONE_REDIRECT = `exps://${API_DOMAIN}/auth-done`;
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -140,10 +146,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Native (iOS/Android): polling approach ───────────────────────────────────
-  // Opens /api/auth/google-initiate in a browser → Google OAuth → server-side
-  // callback stores the user → app polls /api/auth/session/:id → on success,
-  // dismisses the browser and logs in. Zero exps:// deep links involved.
+  // ── Native (iOS/Android): openAuthSessionAsync + session polling ─────────────
+  //
+  // Flow:
+  //  1. App opens /api/auth/google-initiate → server redirects to Google OAuth
+  //  2. User signs in → Google redirects to /api/auth/google-callback
+  //  3. Callback page fetches user info, stores in sessionStore, then redirects
+  //     to exps://API_DOMAIN/auth-done?session=SESSION_ID  ← SAME host as Expo server
+  //  4a. openAuthSessionAsync intercepts the exps:// redirect → auto-closes browser,
+  //      returns the URL → app extracts session, fetches user from API
+  //  4b. OR: background poll detects the session → dismisses browser → logs in
+  //
+  // The exps:// host MUST match API_DOMAIN (= the running Expo server host).
+  // Correct host → in-app deep link. Wrong host → Expo tries to load new app → crash.
   const signInWithGoogleNative = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
@@ -155,47 +170,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       `&client_id=${encodeURIComponent(googleClientId)}`;
 
     let resolvedUser: any = null;
-    let browserClosed = false;
+    let done = false;
 
-    // Poll for the session in parallel with the browser being open
+    // Background poll — fallback for when openAuthSessionAsync doesn't auto-capture
+    // (Android pauses JS while browser is in foreground; this runs after browser closes)
     const pollPromise = (async () => {
-      for (let i = 0; i < 120 && !browserClosed; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        if (browserClosed) break;
+      for (let i = 0; i < 60 && !done; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        if (done) break;
         try {
           const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
           if (r.ok) {
             const data = await r.json();
-            if (data && data.email) {
+            if (data?.email) {
               resolvedUser = data;
-              browserClosed = true;
+              done = true;
               WebBrowser.dismissBrowser();
               break;
             }
           }
         } catch {
-          // Network hiccup — keep polling
+          // Network hiccup — keep trying
         }
       }
     })();
 
-    try {
-      // openBrowserAsync resolves when the browser is closed (by user or dismissBrowser)
-      await WebBrowser.openBrowserAsync(initiateUrl);
-    } catch {
-      // Ignore browser errors
+    // openAuthSessionAsync monitors for AUTH_DONE_REDIRECT and auto-closes the browser
+    const result = await WebBrowser.openAuthSessionAsync(
+      initiateUrl,
+      AUTH_DONE_REDIRECT,
+    );
+
+    done = true; // stop poll loop
+
+    // Path A: openAuthSessionAsync captured the exps:// redirect
+    if (result.type === "success" && result.url) {
+      const m = result.url.match(/[?&]session=([^&]+)/);
+      const sid = m ? decodeURIComponent(m[1]) : null;
+      if (sid) {
+        try {
+          const r = await fetch(`${API_BASE}/api/auth/session/${sid}`);
+          if (r.ok) resolvedUser = await r.json();
+        } catch {}
+      }
     }
 
-    // Signal the poll loop to stop if the user closed the browser manually
-    browserClosed = true;
-    await pollPromise;
+    await pollPromise; // ensure poll settled (may have found user too)
 
     setSigningIn(false);
-
-    if (resolvedUser) {
+    if (resolvedUser?.email) {
       await saveUser(resolvedUser);
     }
-    // If !resolvedUser the user just cancelled — no error thrown
+    // Cancelled / dismissed — no error thrown, just no user set
   };
 
   const signInWithGoogle = isWeb ? signInWithGoogleWeb : signInWithGoogleNative;
