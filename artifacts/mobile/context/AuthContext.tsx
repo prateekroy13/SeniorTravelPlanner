@@ -15,12 +15,15 @@ const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const API_BASE = `https://${API_DOMAIN}`;
 
-// EXPO_PUBLIC_EXPO_DOMAIN is the Expo delivery domain (expo.janeway.replit.dev in dev,
-// seniortravel.replit.app in prod). The exps:// redirect MUST use this host so that
-// Expo Go recognises the deep link as the currently running project — not a new app
-// to download. Using the API domain instead causes "Failed to download remote update".
+// EXPO_PUBLIC_EXPO_DOMAIN is the host Expo Go identifies the running project by.
+// Dev:  REPLIT_EXPO_DEV_DOMAIN  →  expo.janeway.replit.dev
+// Prod: REPLIT_INTERNAL_APP_DOMAIN  →  senior-travel-planner.replit.app
+//       (same domain the manifest's hostUri is built from, so the deep link matches)
+// The exps:// redirect MUST use this host — if the host doesn't match what's in the
+// manifest's hostUri, Expo Go treats it as a NEW project to download → crash.
+// Fallback to API_DOMAIN (same domain used to build the manifest) is always correct.
 const EXPO_DOMAIN =
-  process.env.EXPO_PUBLIC_EXPO_DOMAIN || "seniortravel.replit.app";
+  process.env.EXPO_PUBLIC_EXPO_DOMAIN || API_DOMAIN;
 
 // openAuthSessionAsync monitors for this URL prefix to auto-close the browser.
 const AUTH_DONE_REDIRECT = `exps://${EXPO_DOMAIN}/auth-done`;

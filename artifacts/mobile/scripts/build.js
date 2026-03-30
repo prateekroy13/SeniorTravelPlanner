@@ -147,6 +147,11 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
+    // EXPO_PUBLIC_EXPO_DOMAIN must match the hostUri baked into the manifest (which
+    // is also built from expoPublicDomain). If they differ, the exps:// deep link
+    // after OAuth points at a host Expo Go doesn't recognise → "Failed to download
+    // remote update" crash.
+    EXPO_PUBLIC_EXPO_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
     EXPO_PUBLIC_CALLBACK_DOMAIN: callbackDomain,
   };
