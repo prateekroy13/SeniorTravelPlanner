@@ -33,6 +33,7 @@ interface AuthContextType {
   isLoading: boolean;
   signingIn: boolean;
   signInWithGoogle: () => Promise<void>;
+  loginWithData: (data: any) => Promise<void>;
   signOut: () => Promise<void>;
   hasGoogleClientId: boolean;
   redirectUri: string;
@@ -231,9 +232,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  // Exposed so that the auth-done route can complete sign-in when the
+  // exps:// redirect navigates via Expo Router instead of being intercepted
+  // by openAuthSessionAsync.
+  const loginWithData = async (data: any) => {
+    if (data?.email) await saveUser(data);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, signingIn, signInWithGoogle, signOut, hasGoogleClientId, redirectUri }}
+      value={{ user, isLoading, signingIn, loginWithData, signInWithGoogle, signOut, hasGoogleClientId, redirectUri }}
     >
       {children}
     </AuthContext.Provider>

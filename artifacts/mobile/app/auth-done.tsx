@@ -1,0 +1,65 @@
+import React, { useEffect, useRef } from "react";
+import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
+import { useLocalSearchParams, router } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+
+const API_DOMAIN =
+  process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
+const API_BASE = `https://${API_DOMAIN}`;
+
+// This screen is navigated to when the Google OAuth callback redirects to
+// exps://HOST/auth-done?session=SESSION_ID. Expo Router intercepts the exps://
+// link (matching this route) and renders this component, which completes login.
+export default function AuthDone() {
+  const { session } = useLocalSearchParams<{ session?: string }>();
+  const { loginWithData } = useAuth();
+  const ran = useRef(false);
+
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    completeAuth();
+  }, []);
+
+  const completeAuth = async () => {
+    try {
+      if (!session) {
+        router.replace("/login" as any);
+        return;
+      }
+      const res = await fetch(`${API_BASE}/api/auth/session/${session}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.email) {
+          await loginWithData(data);
+          router.replace("/(tabs)/" as any);
+          return;
+        }
+      }
+    } catch {}
+    // If anything fails, go back to login
+    router.replace("/login" as any);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#1A6B4A" />
+      <Text style={styles.text}>Signing you in…</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#071209",
+    gap: 16,
+  },
+  text: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+  },
+});
