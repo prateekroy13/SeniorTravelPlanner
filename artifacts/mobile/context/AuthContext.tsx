@@ -15,11 +15,15 @@ const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const API_BASE = `https://${API_DOMAIN}`;
 
-// The callback page redirects to this after storing the session.
-// Using the SAME host as the running Expo server so Android Expo Go treats
-// it as an in-app deep link (not a new app to load → no crash).
-// openAuthSessionAsync monitors for this URL to auto-close the browser.
-const AUTH_DONE_REDIRECT = `exps://${API_DOMAIN}/auth-done`;
+// EXPO_PUBLIC_EXPO_DOMAIN is the Expo delivery domain (expo.janeway.replit.dev in dev,
+// seniortravel.replit.app in prod). The exps:// redirect MUST use this host so that
+// Expo Go recognises the deep link as the currently running project — not a new app
+// to download. Using the API domain instead causes "Failed to download remote update".
+const EXPO_DOMAIN =
+  process.env.EXPO_PUBLIC_EXPO_DOMAIN || "seniortravel.replit.app";
+
+// openAuthSessionAsync monitors for this URL prefix to auto-close the browser.
+const AUTH_DONE_REDIRECT = `exps://${EXPO_DOMAIN}/auth-done`;
 
 export interface AuthUser {
   id: string;
@@ -168,7 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initiateUrl =
       `${API_BASE}/api/auth/google-initiate` +
       `?session_id=${encodeURIComponent(sessionId)}` +
-      `&client_id=${encodeURIComponent(googleClientId)}`;
+      `&client_id=${encodeURIComponent(googleClientId)}` +
+      `&expo_host=${encodeURIComponent(EXPO_DOMAIN)}`;
 
     let resolvedUser: any = null;
     let done = false;
