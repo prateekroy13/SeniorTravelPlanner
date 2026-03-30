@@ -121,9 +121,21 @@ Expo React Native mobile app for SeniorTravel.
 - AI itinerary generation: `POST /api/itineraries/generate`
 - Destinations: `GET /api/destinations`, `GET /api/destinations/search`
 
+**Authentication (Google OAuth):**
+- `context/AuthContext.tsx` — `openAuthSessionAsync` opens OAuth browser; `loginWithData()` method; polls `GET /api/auth/session/:id`
+- `app/auth-done.tsx` — Expo deep-link handler; fetches session from API, calls `loginWithData()`, navigates to tabs
+- `app/_layout.tsx` — Auth guard exempts `pathname.endsWith("/auth-done")` during sign-in
+- Google redirect URI: `https://senior-travel-planner.replit.app/api/auth/google-callback`
+
 **API Server routes:**
 - `POST /api/itineraries/generate` — AI itinerary generation via OpenAI gpt-5.2
 - `GET/POST /api/itineraries` — CRUD for stored itineraries
 - `GET /api/destinations` — 12 hardcoded senior-friendly destinations
 - `GET /api/destinations/search?query=` — Search destinations
 - `GET /api/healthz` — Health check
+- `GET /api/auth/google` — Starts Google OAuth flow
+- `GET /api/auth/google-callback` — Google callback; stores session in PostgreSQL; redirects to Expo deep link
+- `POST /api/auth/store-session` — Stores OAuth session in PostgreSQL `auth_sessions` table
+- `GET /api/auth/session/:id` — One-time-use session fetch (DELETE+RETURNING); 404 if expired/not found
+
+**Session storage:** PostgreSQL `auth_sessions` table (persistent, survives server restarts). 5-minute TTL with background cleanup. Previously in-memory (wiped on restart).

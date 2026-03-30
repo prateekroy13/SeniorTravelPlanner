@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, router } from "expo-router";
+import { Stack, router, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,6 +25,7 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   const { user, isLoading: authLoading } = useAuth();
   const { preferences, isLoading: prefLoading } = usePreferences();
+  const pathname = usePathname();
 
   const isLoading = authLoading || prefLoading;
 
@@ -32,18 +33,24 @@ function RootLayoutNav() {
     if (isLoading) return;
     SplashScreen.hideAsync();
 
+    // Don't redirect during the OAuth callback handoff — auth-done.tsx
+    // is actively fetching the session and will navigate on its own.
+    // pathname may include the /mobile base prefix depending on the proxy setup.
+    if (pathname === "/auth-done" || pathname.endsWith("/auth-done")) return;
+
     if (!user) {
       router.replace("/login");
     } else if (!preferences.hasCompletedOnboarding) {
       router.replace("/onboarding");
     }
-  }, [isLoading, user, preferences.hasCompletedOnboarding]);
+  }, [isLoading, user, preferences.hasCompletedOnboarding, pathname]);
 
   if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="login" options={{ animation: "fade" }} />
+      <Stack.Screen name="auth-done" options={{ animation: "none" }} />
       <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="swipe/[destinationId]" options={{ animation: "slide_from_bottom" }} />

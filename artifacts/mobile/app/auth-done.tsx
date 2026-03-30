@@ -22,21 +22,31 @@ export default function AuthDone() {
   }, []);
 
   const completeAuth = async () => {
+    console.log("[auth-done] completeAuth start, session=", session);
     try {
       if (!session) {
+        console.log("[auth-done] no session param → /login");
         router.replace("/login" as any);
         return;
       }
-      const res = await fetch(`${API_BASE}/api/auth/session/${session}`);
+      const url = `${API_BASE}/api/auth/session/${session}`;
+      console.log("[auth-done] fetching", url);
+      const res = await fetch(url);
+      console.log("[auth-done] fetch status", res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log("[auth-done] user data", JSON.stringify(data));
         if (data?.email) {
           await loginWithData(data);
+          console.log("[auth-done] loginWithData done, navigating to tabs");
           router.replace("/(tabs)/" as any);
           return;
         }
       }
-    } catch {}
+    } catch (e: any) {
+      console.log("[auth-done] error", e?.message);
+    }
+    console.log("[auth-done] fallback → /login");
     // If anything fails, go back to login
     router.replace("/login" as any);
   };

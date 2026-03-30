@@ -1,19 +1,27 @@
 import { Router } from "express";
+import { pool } from "@workspace/db";
 
 const router = Router();
 
-interface SessionEntry {
-  user: object;
-  createdAt: number;
+// Ensure the auth_sessions table exists (created once on startup).
+// Sessions are stored in PostgreSQL so they survive API server restarts.
+async function ensureSessionsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      session_id TEXT PRIMARY KEY,
+      user_data  JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes')
+    )
+  `);
 }
+ensureSessionsTable().catch(console.error);
 
-const sessionStore = new Map<string, SessionEntry>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of sessionStore.entries()) {
-    if (now - val.createdAt > 5 * 60 * 1000) sessionStore.delete(key);
-  }
+// Clean up expired sessions every minute
+setInterval(async () => {
+  try {
+    await pool.query("DELETE FROM auth_sessions WHERE expires_at < NOW()");
+  } catch {}
 }, 60_000);
 
 // Starts the Google OAuth flow. The Expo app opens this URL in a browser.
@@ -137,26 +145,44 @@ router.get("/auth/google-callback", (_req, res) => {
 </html>`);
 });
 
-router.post("/auth/store-session", (req, res): void => {
+router.post("/auth/store-session", async (req, res): Promise<void> => {
   const { session_id, user } = req.body as { session_id: string; user: object };
   if (!session_id || !user) {
     res.status(400).json({ ok: false });
     return;
   }
-  sessionStore.set(session_id, { user, createdAt: Date.now() });
-  res.json({ ok: true });
+  try {
+    await pool.query(
+      `INSERT INTO auth_sessions (session_id, user_data)
+       VALUES ($1, $2)
+       ON CONFLICT (session_id) DO UPDATE SET user_data = EXCLUDED.user_data,
+         created_at = NOW(), expires_at = NOW() + INTERVAL '5 minutes'`,
+      [session_id, JSON.stringify(user)],
+    );
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("store-session error:", e?.message);
+    res.status(500).json({ ok: false });
+  }
 });
 
 // App polls this every 1-2 seconds. Returns 404 while pending, user object when ready.
-// Deletes entry on first successful read (one-time use).
-router.get("/auth/session/:id", (req, res): void => {
-  const entry = sessionStore.get(req.params.id);
-  if (!entry) {
-    res.status(404).json({ pending: true });
-    return;
+// Deletes entry on first successful read (one-time use). Persistent via PostgreSQL.
+router.get("/auth/session/:id", async (req, res): Promise<void> => {
+  try {
+    const result = await pool.query(
+      "DELETE FROM auth_sessions WHERE session_id = $1 AND expires_at > NOW() RETURNING user_data",
+      [req.params.id],
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ pending: true });
+      return;
+    }
+    res.json(result.rows[0].user_data);
+  } catch (e: any) {
+    console.error("get-session error:", e?.message);
+    res.status(500).json({ pending: true });
   }
-  sessionStore.delete(req.params.id);
-  res.json(entry.user);
 });
 
 export default router;
