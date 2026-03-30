@@ -125,7 +125,7 @@ export default function LoginScreen() {
             </Text>
             <View style={styles.redirectUri}>
               <Text style={styles.redirectUriText} selectable>
-                https://seniortravel.replit.app/oauth-callback
+                https://senior-travel-planner.replit.app/api/auth/google-callback
               </Text>
             </View>
             <Text style={styles.redirectHint}>
@@ -422,11 +422,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: "rgba(255,255,255,0.4)",
-  },
-  redirectUri: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.75)",
-    letterSpacing: -0.2,
   },
 });

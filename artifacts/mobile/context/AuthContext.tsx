@@ -8,17 +8,12 @@ WebBrowser.maybeCompleteAuthSession();
 const AUTH_KEY = "@seniortravel_auth";
 
 // EXPO_PUBLIC_DOMAIN is baked in at build time:
-//   dev build  → REPLIT_DEV_DOMAIN  (janeway.replit.dev — routes HTTP correctly)
-//   prod build → REPLIT_INTERNAL_APP_DOMAIN (senior-travel-planner.replit.app — routes HTTP correctly)
-// Both domains correctly serve /oauth-callback via serve.js.
-// NOTE: seniortravel.replit.app is the Expo-protocol delivery domain and does NOT route HTTP.
-const _callbackDomain =
+//   dev  → REPLIT_DEV_DOMAIN  (janeway.replit.dev — valid HTTP server)
+//   prod → REPLIT_INTERNAL_APP_DOMAIN (senior-travel-planner.replit.app — valid HTTP server)
+// NOTE: seniortravel.replit.app is the Expo delivery domain and returns 404 for HTTP.
+const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
-const OAUTH_CALLBACK_URL = `https://${_callbackDomain}/oauth-callback`;
-// MUST use the same host as _callbackDomain. Android Expo Go checks if the exps://
-// host matches the current Expo server host. A different host = Expo tries to load
-// a new app and crashes with "Failed to download remote update".
-const OAUTH_APP_REDIRECT = `exps://${_callbackDomain}/oauth-callback`;
+const API_BASE = `https://${API_DOMAIN}`;
 
 export interface AuthUser {
   id: string;
@@ -64,6 +59,19 @@ async function loadGoogleIdentityServices(): Promise<void> {
   });
 }
 
+function makeSessionId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function mapToAuthUser(data: any): AuthUser {
+  return {
+    id: String(data.id ?? data.sub ?? Math.random()),
+    name: data.name ?? "Traveler",
+    email: data.email ?? "",
+    avatar: data.picture,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasGoogleClientId = !!googleClientId;
   const isWeb = Platform.OS === "web";
 
-  const redirectUri = isWeb ? "" : OAUTH_CALLBACK_URL;
+  const redirectUri = isWeb ? "" : `${API_BASE}/api/auth/google-callback`;
 
   useEffect(() => {
     loadStoredUser();
@@ -90,16 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const saveUser = async (data: any) => {
-    const authUser: AuthUser = {
-      id: String(data.id ?? data.sub ?? Math.random()),
-      name: data.name ?? "Traveler",
-      email: data.email ?? "",
-      avatar: data.picture,
-    };
+    const authUser = mapToAuthUser(data);
     setUser(authUser);
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(authUser));
   };
 
+  // ── Web: uses Google Identity Services (popup) ──────────────────────────────
   const signInWithGoogleWeb = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
@@ -136,46 +140,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ── Native (iOS/Android): polling approach ───────────────────────────────────
+  // Opens /api/auth/google-initiate in a browser → Google OAuth → server-side
+  // callback stores the user → app polls /api/auth/session/:id → on success,
+  // dismisses the browser and logs in. Zero exps:// deep links involved.
   const signInWithGoogleNative = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
-    try {
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth` +
-        `?client_id=${encodeURIComponent(googleClientId)}` +
-        `&redirect_uri=${encodeURIComponent(OAUTH_CALLBACK_URL)}` +
-        `&response_type=token` +
-        `&scope=${encodeURIComponent("openid email profile")}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, OAUTH_APP_REDIRECT);
+    const sessionId = makeSessionId();
+    const initiateUrl =
+      `${API_BASE}/api/auth/google-initiate` +
+      `?session_id=${encodeURIComponent(sessionId)}` +
+      `&client_id=${encodeURIComponent(googleClientId)}`;
 
-      if (result.type === "success" && result.url) {
-        // new URL() may throw on custom schemes (exps://) in some JS environments
-        let token: string | null = null;
+    let resolvedUser: any = null;
+    let browserClosed = false;
+
+    // Poll for the session in parallel with the browser being open
+    const pollPromise = (async () => {
+      for (let i = 0; i < 120 && !browserClosed; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (browserClosed) break;
         try {
-          token = new URL(result.url).searchParams.get("token");
+          const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+          if (r.ok) {
+            const data = await r.json();
+            if (data && data.email) {
+              resolvedUser = data;
+              browserClosed = true;
+              WebBrowser.dismissBrowser();
+              break;
+            }
+          }
         } catch {
-          const m = result.url.match(/[?&]token=([^&]+)/);
-          token = m ? decodeURIComponent(m[1]) : null;
+          // Network hiccup — keep polling
         }
-        if (!token) throw new Error("No token returned from sign-in");
-
-        const resp = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-          headers: { Authorization: `Bearer ${decodeURIComponent(token)}` },
-        });
-        if (!resp.ok) throw new Error("Failed to fetch user info");
-        const data = await resp.json();
-        await saveUser(data);
-      } else if (result.type === "cancel" || result.type === "dismiss") {
-        // User cancelled — silent
-      } else {
-        throw new Error("Sign-in failed");
       }
-    } catch (e) {
-      throw e;
-    } finally {
-      setSigningIn(false);
+    })();
+
+    try {
+      // openBrowserAsync resolves when the browser is closed (by user or dismissBrowser)
+      await WebBrowser.openBrowserAsync(initiateUrl);
+    } catch {
+      // Ignore browser errors
     }
+
+    // Signal the poll loop to stop if the user closed the browser manually
+    browserClosed = true;
+    await pollPromise;
+
+    setSigningIn(false);
+
+    if (resolvedUser) {
+      await saveUser(resolvedUser);
+    }
+    // If !resolvedUser the user just cancelled — no error thrown
   };
 
   const signInWithGoogle = isWeb ? signInWithGoogleWeb : signInWithGoogleNative;
