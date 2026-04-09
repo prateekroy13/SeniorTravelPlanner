@@ -125,15 +125,12 @@ router.get("/auth/google-callback", (_req, res) => {
   .then(function(r){return r.json();})
   .then(function(data){
     if(data.ok){
-      show('\u2705','Signed in!','Returning to app\u2026',false);
-      // Redirect using the app's own URL scheme (mobile://) — NOT exps://.
-      // exps:// tells Expo Go to load/update a project (triggers bundle download)
-      // which crashes with "Failed to download remote update" on Android.
-      // mobile:// is the app's custom scheme and Expo Go treats it as an in-app
-      // deep link navigation with no bundle download involved.
-      setTimeout(function(){
-        window.location.href='mobile://auth-done?session='+encodeURIComponent(sessionId);
-      },400);
+      // Do NOT redirect to a custom scheme here.
+      // In Expo Go, the app's custom scheme (mobile://) is not registered by the OS
+      // so the redirect would leave the browser hanging with no app to handle it.
+      // Instead, the app polls /api/auth/session/:id every second and calls
+      // WebBrowser.dismissBrowser() once the session is found — no deep link needed.
+      show('\u2705','Signed in!','You can close this window now.\u00a0The app will continue automatically.',false);
     } else {
       show('\u26a0\ufe0f','Sign-in failed','Could not save session. Please try again.',true);
     }

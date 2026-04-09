@@ -15,11 +15,11 @@ const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const API_BASE = `https://${API_DOMAIN}`;
 
-// Use the app's own URL scheme (defined in app.json `scheme: "mobile"`) for the
-// OAuth redirect. This tells Expo Go to treat the deep link as in-app navigation
-// rather than loading a new project — which is what `exps://` does and causes
-// "Failed to download remote update" crashes on Android.
-const AUTH_DONE_REDIRECT = "mobile://auth-done";
+// No custom-scheme redirect is used for OAuth completion.
+// In Expo Go on Android, the app's custom scheme (mobile://) is NOT registered by
+// the OS — only exp:// is. Using mobile:// as a redirect causes the browser to
+// hang with no app to handle the intent.
+// Instead, the background poll detects the session and calls dismissBrowser().
 
 export interface AuthUser {
   id: string;
@@ -147,19 +147,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Native (iOS/Android): openAuthSessionAsync + session polling ─────────────
+  // ── Native (iOS/Android): poll-based auth ────────────────────────────────────
   //
   // Flow:
-  //  1. App opens /api/auth/google-initiate → server redirects to Google OAuth
+  //  1. App generates a session_id and opens /api/auth/google-initiate in a CCT
   //  2. User signs in → Google redirects to /api/auth/google-callback
-  //  3. Callback page fetches user info, stores in sessionStore, then redirects
-  //     to exps://API_DOMAIN/auth-done?session=SESSION_ID  ← SAME host as Expo server
-  //  4a. openAuthSessionAsync intercepts the exps:// redirect → auto-closes browser,
-  //      returns the URL → app extracts session, fetches user from API
-  //  4b. OR: background poll detects the session → dismisses browser → logs in
+  //  3. Callback page stores the user data in PostgreSQL (keyed by session_id)
+  //     then shows "Signed in! You can close this window" — no custom-scheme redirect
+  //  4. Background poll (every 1s) fetches /api/auth/session/:id until it finds data
+  //  5. Poll calls WebBrowser.dismissBrowser() → CCT closes → user is logged in
   //
-  // The exps:// host MUST match API_DOMAIN (= the running Expo server host).
-  // Correct host → in-app deep link. Wrong host → Expo tries to load new app → crash.
+  // Why no custom-scheme redirect (mobile://)?
+  //  In Expo Go, only exp:// is registered with the OS. The app's custom scheme
+  //  ("mobile") only works in standalone builds. Redirecting to mobile:// in Expo Go
+  //  leaves the browser open with no app to handle the intent — causing a hang.
   const signInWithGoogleNative = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
@@ -196,15 +197,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
-    // openAuthSessionAsync monitors for AUTH_DONE_REDIRECT and auto-closes the browser
-    const result = await WebBrowser.openAuthSessionAsync(
-      initiateUrl,
-      AUTH_DONE_REDIRECT,
-    );
+    // Open the browser — no redirectUrl param needed.
+    // The background poll above detects the completed session and calls
+    // WebBrowser.dismissBrowser() to close the CCT automatically.
+    const result = await WebBrowser.openAuthSessionAsync(initiateUrl);
 
     done = true; // stop poll loop
 
-    // Path A: openAuthSessionAsync captured the exps:// redirect
+    // Path A: openAuthSessionAsync auto-captured a redirect URL (standalone builds only)
     if (result.type === "success" && result.url) {
       const m = result.url.match(/[?&]session=([^&]+)/);
       const sid = m ? decodeURIComponent(m[1]) : null;
