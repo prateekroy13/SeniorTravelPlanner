@@ -8,8 +8,10 @@ const API_DOMAIN =
 const API_BASE = `https://${API_DOMAIN}`;
 
 // This screen is navigated to when the Google OAuth callback redirects to
-// exps://HOST/auth-done?session=SESSION_ID. Expo Router intercepts the exps://
-// link (matching this route) and renders this component, which completes login.
+// mobile://auth-done?session=SESSION_ID. Expo Router intercepts the mobile://
+// deep link (matching this route) and renders this component to complete login.
+// NOTE: mobile:// is used instead of exps:// to avoid Expo Go treating the deep
+// link as a project-load request (which triggers a bundle download and crashes).
 export default function AuthDone() {
   const { session } = useLocalSearchParams<{ session?: string }>();
   const { loginWithData } = useAuth();

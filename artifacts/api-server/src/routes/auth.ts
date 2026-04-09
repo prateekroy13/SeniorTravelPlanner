@@ -29,7 +29,7 @@ setInterval(async () => {
 // The app polls /api/auth/session/:id until the user data is ready,
 // then dismisses the browser — no exps:// deep links needed.
 router.get("/auth/google-initiate", (req, res): void => {
-  const { session_id, client_id, expo_host } = req.query as Record<string, string>;
+  const { session_id, client_id } = req.query as Record<string, string>;
   if (!session_id || !client_id) {
     res.status(400).send("Missing required params: session_id and client_id");
     return;
@@ -39,10 +39,7 @@ router.get("/auth/google-initiate", (req, res): void => {
   const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol;
   const callbackUrl = `${proto}://${host}/api/auth/google-callback`;
   const scope = "openid email profile";
-  // expo_host is the Expo delivery domain (expo.janeway.replit.dev in dev).
-  // The callback page uses it to redirect to exps://EXPO_HOST/auth-done
-  // so Expo Go recognises the deep link as the current project, not a new app.
-  const state = Buffer.from(JSON.stringify({ session_id, expo_host: expo_host || host })).toString("base64url");
+  const state = Buffer.from(JSON.stringify({ session_id })).toString("base64url");
 
   const googleUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -113,11 +110,6 @@ router.get("/auth/google-callback", (_req, res) => {
   catch(e){show('\u26a0\ufe0f','Sign-in failed','Invalid state. Please try again.',true);return;}
 
   var sessionId=parsed.session_id;
-  // expo_host is the Expo delivery domain passed from the mobile app.
-  // Must use this (not window.location.host) so Expo Go recognises the
-  // exps:// deep link as the same running project and doesn't try to
-  // load a new app — which causes "Failed to download remote update".
-  var expoHost=parsed.expo_host||window.location.host;
 
   fetch('https://www.googleapis.com/userinfo/v2/me',{
     headers:{Authorization:'Bearer '+token}
@@ -134,11 +126,13 @@ router.get("/auth/google-callback", (_req, res) => {
   .then(function(data){
     if(data.ok){
       show('\u2705','Signed in!','Returning to app\u2026',false);
-      // Redirect to exps://EXPO_HOST/auth-done — using the Expo delivery domain
-      // passed from the mobile app (not window.location.host which is the API domain).
-      // Correct host → Expo Go treats it as an in-app route. Wrong host → crash.
+      // Redirect using the app's own URL scheme (mobile://) — NOT exps://.
+      // exps:// tells Expo Go to load/update a project (triggers bundle download)
+      // which crashes with "Failed to download remote update" on Android.
+      // mobile:// is the app's custom scheme and Expo Go treats it as an in-app
+      // deep link navigation with no bundle download involved.
       setTimeout(function(){
-        window.location.href='exps://'+expoHost+'/auth-done?session='+encodeURIComponent(sessionId);
+        window.location.href='mobile://auth-done?session='+encodeURIComponent(sessionId);
       },400);
     } else {
       show('\u26a0\ufe0f','Sign-in failed','Could not save session. Please try again.',true);
