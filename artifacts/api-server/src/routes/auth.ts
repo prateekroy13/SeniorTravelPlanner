@@ -130,7 +130,7 @@ router.get("/auth/google-callback", (_req, res) => {
       // so the redirect would leave the browser hanging with no app to handle it.
       // Instead, the app polls /api/auth/session/:id every second and calls
       // WebBrowser.dismissBrowser() once the session is found — no deep link needed.
-      show('\u2705','Signed in!','You can close this window now.\u00a0The app will continue automatically.',false);
+      show('\u2705','Signed in!','Please close this window to return to the app.',false);
     } else {
       show('\u26a0\ufe0f','Sign-in failed','Could not save session. Please try again.',true);
     }

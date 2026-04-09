@@ -147,20 +147,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Native (iOS/Android): poll-based auth ────────────────────────────────────
+  // ── Native (iOS/Android): post-close session fetch ───────────────────────────
   //
   // Flow:
   //  1. App generates a session_id and opens /api/auth/google-initiate in a CCT
   //  2. User signs in → Google redirects to /api/auth/google-callback
-  //  3. Callback page stores the user data in PostgreSQL (keyed by session_id)
-  //     then shows "Signed in! You can close this window" — no custom-scheme redirect
-  //  4. Background poll (every 1s) fetches /api/auth/session/:id until it finds data
-  //  5. Poll calls WebBrowser.dismissBrowser() → CCT closes → user is logged in
-  //
-  // Why no custom-scheme redirect (mobile://)?
-  //  In Expo Go, only exp:// is registered with the OS. The app's custom scheme
-  //  ("mobile") only works in standalone builds. Redirecting to mobile:// in Expo Go
-  //  leaves the browser open with no app to handle the intent — causing a hang.
+  //  3. Callback page stores user data in PostgreSQL, shows "Signed in! Close window"
+  //     — NO custom-scheme redirect (mobile:// is unregistered in Expo Go on Android)
+  //  4. User closes the browser (or it auto-closes)
+  //  5. On Android, JS is SUSPENDED while CCT is open — polling is useless then.
+  //     Instead, we fetch the session immediately after openAuthSessionAsync returns,
+  //     since the data was stored in the DB during the browser session.
+  //  6. Retry a few times in case of a brief network delay.
   const signInWithGoogleNative = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
@@ -171,58 +169,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       `?session_id=${encodeURIComponent(sessionId)}` +
       `&client_id=${encodeURIComponent(googleClientId)}`;
 
+    // Open the Chrome Custom Tab. JS is suspended on Android while it is open.
+    // When this resolves (any reason: user closed it, sign-in done, etc.)
+    // the session should already be in the DB — we fetch it immediately below.
+    await WebBrowser.openAuthSessionAsync(initiateUrl);
+
+    // JS resumes here. Try fetching the session with retries (up to ~10 seconds).
+    // The session was stored in DB while the browser was open. One-time use: the
+    // first successful fetch deletes it.
     let resolvedUser: any = null;
-    let done = false;
-
-    // Background poll — fallback for when openAuthSessionAsync doesn't auto-capture
-    // (Android pauses JS while browser is in foreground; this runs after browser closes)
-    const pollPromise = (async () => {
-      for (let i = 0; i < 60 && !done; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        if (done) break;
-        try {
-          const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
-          if (r.ok) {
-            const data = await r.json();
-            if (data?.email) {
-              resolvedUser = data;
-              done = true;
-              WebBrowser.dismissBrowser();
-              break;
-            }
-          }
-        } catch {
-          // Network hiccup — keep trying
+    for (let attempt = 0; attempt < 10 && !resolvedUser; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000));
+      try {
+        const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+        if (r.ok) {
+          const data = await r.json();
+          if (data?.email) resolvedUser = data;
+        } else if (r.status === 404 && attempt === 0) {
+          // Session not found on first try — user may have closed before finishing.
+          // Still retry a few times in case of slight race.
         }
-      }
-    })();
-
-    // Open the browser — no redirectUrl param needed.
-    // The background poll above detects the completed session and calls
-    // WebBrowser.dismissBrowser() to close the CCT automatically.
-    const result = await WebBrowser.openAuthSessionAsync(initiateUrl);
-
-    done = true; // stop poll loop
-
-    // Path A: openAuthSessionAsync auto-captured a redirect URL (standalone builds only)
-    if (result.type === "success" && result.url) {
-      const m = result.url.match(/[?&]session=([^&]+)/);
-      const sid = m ? decodeURIComponent(m[1]) : null;
-      if (sid) {
-        try {
-          const r = await fetch(`${API_BASE}/api/auth/session/${sid}`);
-          if (r.ok) resolvedUser = await r.json();
-        } catch {}
+      } catch {
+        // Network hiccup — retry
       }
     }
-
-    await pollPromise; // ensure poll settled (may have found user too)
 
     setSigningIn(false);
     if (resolvedUser?.email) {
       await saveUser(resolvedUser);
     }
-    // Cancelled / dismissed — no error thrown, just no user set
+    // Dismissed without completing sign-in — no error, just no user set
   };
 
   const signInWithGoogle = isWeb ? signInWithGoogleWeb : signInWithGoogleNative;
