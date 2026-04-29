@@ -35,9 +35,17 @@ router.get("/auth/google-initiate", (req, res): void => {
     return;
   }
 
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol;
-  const callbackUrl = `${proto}://${host}/api/auth/google-callback`;
+  // Always use the registered production domain for the callback so that
+  // dev-server requests don't produce a redirect_uri_mismatch error.
+  // GOOGLE_CALLBACK_ORIGIN must match the URI registered in Google Console.
+  const callbackOrigin =
+    process.env.GOOGLE_CALLBACK_ORIGIN ||
+    (() => {
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol;
+      return `${proto}://${host}`;
+    })();
+  const callbackUrl = `${callbackOrigin}/api/auth/google-callback`;
   const scope = "openid email profile";
   const state = Buffer.from(JSON.stringify({ session_id })).toString("base64url");
 
