@@ -3,9 +3,10 @@ import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 
-const API_DOMAIN =
-  process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
-const API_BASE = `https://${API_DOMAIN}`;
+// Sessions are stored in the production DB (by the production OAuth callback).
+// Always poll the production server so dev and prod both find the session.
+const AUTH_ORIGIN =
+  process.env.EXPO_PUBLIC_AUTH_ORIGIN || "https://senior-travel-planner.replit.app";
 
 // This screen is navigated to when the Google OAuth callback redirects to
 // mobile://auth-done?session=SESSION_ID. Expo Router intercepts the mobile://
@@ -31,7 +32,7 @@ export default function AuthDone() {
         router.replace("/login" as any);
         return;
       }
-      const url = `${API_BASE}/api/auth/session/${session}`;
+      const url = `${AUTH_ORIGIN}/api/auth/session/${session}`;
       console.log("[auth-done] fetching", url);
       const res = await fetch(url);
       console.log("[auth-done] fetch status", res.status);

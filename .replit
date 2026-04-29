@@ -33,3 +33,4 @@ channel = "stable-25_05"
 [userenv.shared]
 EXPO_PUBLIC_GOOGLE_CLIENT_ID = "106076213238-vhjvrumbg1skt8vnvqqkiphsi6jn5uej.apps.googleusercontent.com"
 GOOGLE_CALLBACK_ORIGIN = "https://senior-travel-planner.replit.app"
+EXPO_PUBLIC_AUTH_ORIGIN = "https://senior-travel-planner.replit.app"

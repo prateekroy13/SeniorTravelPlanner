@@ -15,6 +15,14 @@ const API_DOMAIN =
   process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
 const API_BASE = `https://${API_DOMAIN}`;
 
+// For web OAuth, always use the production server.
+// The Google callback is registered only on the production domain, and the
+// session is stored in the production DB — so both the initiate request and
+// the session poll must go through the same server.
+// EXPO_PUBLIC_AUTH_ORIGIN defaults to the production domain.
+const AUTH_ORIGIN =
+  process.env.EXPO_PUBLIC_AUTH_ORIGIN || "https://senior-travel-planner.replit.app";
+
 // No custom-scheme redirect is used for OAuth completion.
 // In Expo Go on Android, the app's custom scheme (mobile://) is NOT registered by
 // the OS — only exp:// is. Using mobile:// as a redirect causes the browser to
@@ -134,8 +142,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSigningIn(true);
 
     const sessionId = makeSessionId();
+    // AUTH_ORIGIN is always the production server: it hosts the registered
+    // Google callback and the canonical session store (PostgreSQL).
+    // Polling the dev server would never find the session because the
+    // production and dev deployments use separate databases.
     const initiateUrl =
-      `${API_BASE}/api/auth/google-initiate` +
+      `${AUTH_ORIGIN}/api/auth/google-initiate` +
       `?session_id=${encodeURIComponent(sessionId)}` +
       `&client_id=${encodeURIComponent(googleClientId)}`;
 
@@ -150,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     for (let i = 0; i < 120 && !resolvedUser; i++) {
       await new Promise((r) => setTimeout(r, 1000));
       try {
-        const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+        const r = await fetch(`${AUTH_ORIGIN}/api/auth/session/${sessionId}`);
         if (r.ok) {
           const data = await r.json();
           if (data?.email) resolvedUser = data;
@@ -163,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         for (let g = 0; g < 3 && !resolvedUser; g++) {
           await new Promise((r) => setTimeout(r, 1000));
           try {
-            const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+            const r = await fetch(`${AUTH_ORIGIN}/api/auth/session/${sessionId}`);
             if (r.ok) {
               const data = await r.json();
               if (data?.email) resolvedUser = data;
