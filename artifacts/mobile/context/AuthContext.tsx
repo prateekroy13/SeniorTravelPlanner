@@ -37,6 +37,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   hasGoogleClientId: boolean;
   redirectUri: string;
+  guestMode: boolean;
+  enterGuestMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -83,6 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  // guestMode lets the user browse the app without a Google account.
+  // It is in-memory only (not persisted) so it resets on each app open.
+  const [guestMode, setGuestMode] = useState(false);
+  const enterGuestMode = () => setGuestMode(true);
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
   const hasGoogleClientId = !!googleClientId;
@@ -217,7 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, signingIn, loginWithData, signInWithGoogle, signOut, hasGoogleClientId, redirectUri }}
+      value={{ user, isLoading, signingIn, loginWithData, signInWithGoogle, signOut, hasGoogleClientId, redirectUri, guestMode, enterGuestMode }}
     >
       {children}
     </AuthContext.Provider>

@@ -26,7 +26,7 @@ function GoogleIcon() {
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId, redirectUri } = useAuth();
+  const { user, isLoading, signingIn, signInWithGoogle, hasGoogleClientId, enterGuestMode } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const isNative = Platform.OS !== "web";
 
@@ -115,24 +115,6 @@ export default function LoginScreen() {
           </View>
         )}
 
-        {isNative && hasGoogleClientId ? (
-          <View style={styles.redirectBox}>
-            <Text style={styles.redirectTitle}>🔧 Google Console Setup Required</Text>
-            <Text style={styles.redirectBody}>
-              Add this to{" "}
-              <Text style={styles.redirectBold}>Authorized Redirect URIs</Text>
-              {"\n"}(not JavaScript Origins):
-            </Text>
-            <View style={styles.redirectUri}>
-              <Text style={styles.redirectUriText} selectable>
-                https://senior-travel-planner.replit.app/api/auth/google-callback
-              </Text>
-            </View>
-            <Text style={styles.redirectHint}>
-              Long-press the URI above to copy it.
-            </Text>
-          </View>
-        ) : null}
 
         {!hasGoogleClientId && (
           <View style={styles.noKeyNotice}>
@@ -161,7 +143,7 @@ export default function LoginScreen() {
         ) : (
           <TouchableOpacity
             style={styles.demoBtn}
-            onPress={() => router.replace("/(tabs)/")}
+            onPress={() => { enterGuestMode(); router.replace("/(tabs)/"); }}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -178,7 +160,10 @@ export default function LoginScreen() {
         {hasGoogleClientId && (
           <TouchableOpacity
             style={styles.guestBtn}
-            onPress={() => router.replace("/(tabs)/")}
+            onPress={() => {
+              enterGuestMode();
+              router.replace("/(tabs)/");
+            }}
             activeOpacity={0.7}
           >
             <Text style={styles.guestBtnText}>Continue without signing in</Text>

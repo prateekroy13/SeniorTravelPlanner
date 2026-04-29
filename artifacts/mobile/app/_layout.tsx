@@ -23,7 +23,7 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, guestMode } = useAuth();
   const { preferences, isLoading: prefLoading } = usePreferences();
   const pathname = usePathname();
 
@@ -35,15 +35,15 @@ function RootLayoutNav() {
 
     // Don't redirect during the OAuth callback handoff — auth-done.tsx
     // is actively fetching the session and will navigate on its own.
-    // pathname may include the /mobile base prefix depending on the proxy setup.
     if (pathname === "/auth-done" || pathname.endsWith("/auth-done")) return;
 
-    if (!user) {
+    // guestMode allows browsing without a Google account
+    if (!user && !guestMode) {
       router.replace("/login");
-    } else if (!preferences.hasCompletedOnboarding) {
+    } else if (user && !preferences.hasCompletedOnboarding) {
       router.replace("/onboarding");
     }
-  }, [isLoading, user, preferences.hasCompletedOnboarding, pathname]);
+  }, [isLoading, user, guestMode, preferences.hasCompletedOnboarding, pathname]);
 
   if (isLoading) return null;
 
