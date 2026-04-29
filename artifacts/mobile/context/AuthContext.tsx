@@ -116,40 +116,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(authUser));
   };
 
-  // ── Web: uses Google Identity Services (popup) ──────────────────────────────
+  // ── Web: server-side OAuth via new browser tab + polling ────────────────────
+  //
+  // Previous approach used Google Identity Services (GIS) popup which requires
+  // the page origin to be in Google Console "Authorized JavaScript Origins".
+  // That fails in the dev preview (ephemeral domain) and is fragile in iframes.
+  //
+  // This approach uses the same server-side flow as native:
+  //  1. Open /api/auth/google-initiate in a new tab
+  //  2. User signs in → callback stores session in PostgreSQL
+  //  3. Poll /api/auth/session/:id every second until found or tab is closed
+  //  4. saveUser() → user is logged in
+  //
+  // Works on any origin — no JS-origin registration required.
   const signInWithGoogleWeb = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
-    try {
-      await loadGoogleIdentityServices();
-      await new Promise<void>((resolve, reject) => {
-        const tokenClient = window.google!.accounts.oauth2.initTokenClient({
-          client_id: googleClientId,
-          scope: "email profile openid",
-          callback: async (resp: any) => {
-            if (resp.error) {
-              setSigningIn(false);
-              reject(new Error(resp.error));
-              return;
-            }
-            try {
-              const res = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-                headers: { Authorization: `Bearer ${resp.access_token}` },
-              });
-              const data = await res.json();
-              await saveUser(data);
-              resolve();
-            } catch (e) {
-              setSigningIn(false);
-              reject(e);
-            }
-          },
-        });
-        tokenClient.requestAccessToken();
-      });
-    } catch (e) {
+
+    const sessionId = makeSessionId();
+    const initiateUrl =
+      `${API_BASE}/api/auth/google-initiate` +
+      `?session_id=${encodeURIComponent(sessionId)}` +
+      `&client_id=${encodeURIComponent(googleClientId)}`;
+
+    const newTab = window.open(initiateUrl, "_blank");
+    if (!newTab) {
       setSigningIn(false);
-      throw e;
+      throw new Error("popup_blocked");
+    }
+
+    let resolvedUser: any = null;
+
+    for (let i = 0; i < 120 && !resolvedUser; i++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      try {
+        const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+        if (r.ok) {
+          const data = await r.json();
+          if (data?.email) resolvedUser = data;
+        }
+      } catch {
+        // network hiccup — keep trying
+      }
+      // If user closed the tab, give it a 3-second grace then bail
+      if (newTab.closed && !resolvedUser) {
+        for (let g = 0; g < 3 && !resolvedUser; g++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          try {
+            const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+            if (r.ok) {
+              const data = await r.json();
+              if (data?.email) resolvedUser = data;
+            }
+          } catch {}
+        }
+        break;
+      }
+    }
+
+    if (!newTab.closed) newTab.close();
+    setSigningIn(false);
+    if (resolvedUser?.email) {
+      await saveUser(resolvedUser);
     }
   };
 
