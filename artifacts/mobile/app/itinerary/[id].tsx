@@ -8,12 +8,15 @@ import {
   Platform,
   Alert,
   Share,
+  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import Colors from "@/constants/colors";
 import { DayCard } from "@/components/DayCard";
 import { useSavedItineraries } from "@/context/SavedItinerariesContext";
@@ -32,6 +35,7 @@ export default function ItineraryScreen() {
   const { saveItinerary, savedItineraries } = useSavedItineraries();
   const [isSaving, setIsSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   let itinerary: any = null;
   try {
@@ -93,6 +97,136 @@ export default function ItineraryScreen() {
     }
   };
 
+  const handleDownload = async () => {
+    if (isDownloading || !itinerary) return;
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsDownloading(true);
+    try {
+      const buildActivity = (act: any) => `
+        <div class="activity ${act.isRestStop ? "rest" : ""}">
+          <div class="act-header">
+            <span class="act-name">${act.name}</span>
+            ${act.crowdLevel ? `<span class="crowd crowd-${act.crowdLevel}">${act.crowdLevel === "low" ? "Quiet" : act.crowdLevel === "medium" ? "Moderate" : "Busy"}</span>` : ""}
+            ${act.isRestStop ? '<span class="rest-tag">Rest Stop</span>' : ""}
+          </div>
+          <p class="act-desc">${act.description || ""}</p>
+          ${act.openingHours ? `<div class="info-row"><span class="icon">🕐</span> ${act.openingHours}</div>` : ""}
+          ${act.bestTimeToVisit ? `<div class="info-row best-time"><span class="icon">☀️</span> ${act.bestTimeToVisit}</div>` : ""}
+          <div class="act-meta">
+            <span>⏱ ${act.duration}</span>
+            <span>👟 ${(act.steps || 0).toLocaleString()} steps</span>
+            <span>💶 ${act.cost}</span>
+          </div>
+          ${act.tips ? `<div class="tip">💡 ${act.tips}</div>` : ""}
+          ${act.travelMinutesToNext ? `<div class="travel-connector">🚶 ${act.travelMinutesToNext} min walk to next stop</div>` : ""}
+        </div>`;
+
+      const buildDay = (day: any) => {
+        const sections = [
+          { label: "🌅 Morning", acts: day.morning || [] },
+          { label: "☀️ Afternoon", acts: day.afternoon || [] },
+          { label: "🌙 Evening", acts: day.evening || [] },
+        ].filter((s) => s.acts.length > 0);
+
+        return `
+          <div class="day-card">
+            <div class="day-header">
+              <span class="day-num">Day ${day.dayNumber}</span>
+              <span class="day-theme">${day.theme || ""}</span>
+            </div>
+            <div class="day-stats">
+              <span>👟 ${(day.totalSteps || 0).toLocaleString()} steps</span>
+              <span>⏱ ${day.activeHours || 0}h active</span>
+              <span>💶 ${day.currency || ""}${day.estimatedCostLow || 0}–${day.estimatedCostHigh || 0}</span>
+            </div>
+            ${day.crowdAvoidanceTip ? `<div class="crowd-tip">📢 ${day.crowdAvoidanceTip}</div>` : ""}
+            ${sections.map((s) => `
+              <div class="time-block">
+                <div class="time-label">${s.label}</div>
+                ${s.acts.map(buildActivity).join("")}
+              </div>`).join("")}
+            ${day.restaurants?.length ? `
+              <div class="time-block">
+                <div class="time-label">🍽️ Where to Eat</div>
+                ${day.restaurants.map((r: any) => `
+                  <div class="restaurant">
+                    <strong>${r.name}</strong> — ${r.cuisine} · ${r.priceRange}
+                    <p>${r.description || ""}</p>
+                    ${r.nearbyAttraction ? `<small>Near ${r.nearbyAttraction}</small>` : ""}
+                  </div>`).join("")}
+              </div>` : ""}
+          </div>`;
+      };
+
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body { font-family: Georgia, serif; padding: 32px; color: #222; max-width: 800px; margin: 0 auto; }
+  h1 { color: #1A6B4A; font-size: 28px; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .overview { background: #F0FAF5; border-left: 4px solid #1A6B4A; padding: 16px; border-radius: 4px; margin-bottom: 24px; }
+  .meta { display: flex; gap: 24px; font-size: 13px; color: #555; margin-bottom: 16px; flex-wrap: wrap; }
+  .day-card { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 28px; overflow: hidden; }
+  .day-header { background: #1A6B4A; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .day-num { font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; }
+  .day-theme { font-size: 16px; font-weight: bold; }
+  .day-stats { padding: 8px 16px; background: #F8F9FA; font-size: 12px; color: #555; display: flex; gap: 20px; }
+  .crowd-tip { padding: 8px 16px; font-size: 12px; color: #E65100; background: #FFF3E0; }
+  .time-block { padding: 12px 16px; }
+  .time-label { font-size: 12px; font-weight: bold; color: #1A6B4A; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .activity { border-left: 2px solid #1A6B4A; padding-left: 12px; margin-bottom: 14px; }
+  .activity.rest { border-left-color: #E8A951; }
+  .act-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .act-name { font-weight: bold; font-size: 14px; }
+  .crowd { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: bold; }
+  .crowd-low { background: #E8F5E9; color: #2E7D32; }
+  .crowd-medium { background: #FFF3E0; color: #E65100; }
+  .crowd-high { background: #FFEBEE; color: #C62828; }
+  .rest-tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: #FFF3CD; color: #856404; }
+  .act-desc { font-size: 12px; color: #555; margin: 4px 0; }
+  .info-row { font-size: 11px; color: #666; margin: 3px 0; }
+  .best-time { color: #1A6B4A; font-style: italic; }
+  .act-meta { display: flex; gap: 16px; font-size: 11px; color: #888; margin: 6px 0; }
+  .tip { font-size: 11px; color: #1A6B4A; background: #F0FAF5; padding: 5px 8px; border-radius: 4px; margin-top: 4px; }
+  .travel-connector { font-size: 11px; color: #888; text-align: center; padding: 6px 0; border-top: 1px dashed #ddd; margin-top: 8px; }
+  .restaurant { border: 1px solid #eee; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 12px; }
+  .restaurant p { margin: 4px 0; color: #555; }
+  .restaurant small { color: #888; }
+  .footer { margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; }
+</style></head>
+<body>
+  <h1>${itinerary.title}</h1>
+  <p class="subtitle">${itinerary.city}, ${itinerary.country} · ${itinerary.days} days · ${itinerary.travelMonth}</p>
+  <div class="overview">${itinerary.overview}</div>
+  <div class="meta">
+    <span>⭐ Senior Score: ${itinerary.seniorFriendlyScore}/10</span>
+    <span>💶 Est. Cost: ${itinerary.currency}${itinerary.totalEstimatedCostLow}–${itinerary.totalEstimatedCostHigh}</span>
+    <span>🌤 ${itinerary.weatherInfo || ""}</span>
+  </div>
+  ${itinerary.seniorFriendlyNotes ? `<p style="font-size:12px;color:#1A6B4A;margin-bottom:20px;">♿ ${itinerary.seniorFriendlyNotes}</p>` : ""}
+  ${(itinerary.dayPlans || []).map(buildDay).join("")}
+  <div class="footer">Generated by SeniorTravel · ${new Date().toLocaleDateString()}</div>
+</body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: `${itinerary.title} — Itinerary`,
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        Alert.alert("Saved", `PDF saved to: ${uri}`);
+      }
+    } catch (e) {
+      console.error("Download error", e);
+      Alert.alert("Error", "Could not create PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -116,6 +250,17 @@ export default function ItineraryScreen() {
             <View style={styles.actionRight}>
               <TouchableOpacity onPress={handleShare} style={styles.actionBtn}>
                 <Feather name="share" size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDownload}
+                style={styles.actionBtn}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Feather name="download" size={18} color="#fff" />
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSave}

@@ -13,6 +13,9 @@ import Colors from "@/constants/colors";
 interface Activity {
   name: string;
   description: string;
+  openingHours?: string;
+  bestTimeToVisit?: string;
+  crowdLevel?: "low" | "medium" | "high";
   duration: string;
   walkingMinutes: number;
   steps: number;
@@ -285,6 +288,17 @@ function StatBox({
   );
 }
 
+const CROWD_COLORS: Record<string, string> = {
+  low: "#2E7D32",
+  medium: "#E65100",
+  high: "#C62828",
+};
+const CROWD_LABELS: Record<string, string> = {
+  low: "Quiet",
+  medium: "Moderate crowds",
+  high: "Busy",
+};
+
 function ActivityItem({ activity }: { activity: Activity }) {
   return (
     <View
@@ -310,13 +324,35 @@ function ActivityItem({ activity }: { activity: Activity }) {
               <Text style={styles.restTagText}>Rest</Text>
             </View>
           )}
+          {activity.crowdLevel && !activity.isRestStop && (
+            <View style={[styles.crowdBadge, { backgroundColor: CROWD_COLORS[activity.crowdLevel] + "22" }]}>
+              <View style={[styles.crowdDot, { backgroundColor: CROWD_COLORS[activity.crowdLevel] }]} />
+              <Text style={[styles.crowdText, { color: CROWD_COLORS[activity.crowdLevel] }]}>
+                {CROWD_LABELS[activity.crowdLevel]}
+              </Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.activityDesc} numberOfLines={2}>
+        <Text style={styles.activityDesc} numberOfLines={3}>
           {activity.description}
         </Text>
+
+        {activity.openingHours && (
+          <View style={styles.infoRow}>
+            <Feather name="clock" size={11} color={Colors.light.textTertiary} />
+            <Text style={styles.infoRowText}>{activity.openingHours}</Text>
+          </View>
+        )}
+        {activity.bestTimeToVisit && (
+          <View style={styles.infoRow}>
+            <Feather name="sun" size={11} color={Colors.light.primary} />
+            <Text style={[styles.infoRowText, { color: Colors.light.primary }]}>{activity.bestTimeToVisit}</Text>
+          </View>
+        )}
+
         <View style={styles.activityMeta}>
           <View style={styles.metaItem}>
-            <Feather name="clock" size={11} color={Colors.light.textTertiary} />
+            <Feather name="watch" size={11} color={Colors.light.textTertiary} />
             <Text style={styles.metaText}>{activity.duration}</Text>
           </View>
           <View style={styles.metaItem}>
@@ -695,6 +731,37 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: Colors.light.primary,
+  },
+  crowdBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    marginLeft: "auto",
+  },
+  crowdDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  crowdText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 5,
+    marginBottom: 3,
+  },
+  infoRowText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    flex: 1,
+    lineHeight: 16,
   },
   activityLeft: {
     alignItems: "center",

@@ -44,23 +44,23 @@ async function getRealTravelTimes(
   return `\nREAL GOOGLE MAPS TRAVEL TIMES between selected attractions (use these exact figures in the itinerary):\n${lines.join("\n")}\n`;
 }
 
-const SYSTEM_PROMPT = `You are a senior-first travel planner AI. Generate detailed, realistic travel itineraries specifically designed for senior travelers (ages 60+).
+const SYSTEM_PROMPT = `You are a senior-first travel planner AI. Generate realistic travel itineraries for senior travelers (ages 60+).
 
 Key requirements:
-- Pace activities according to the specified preference (easy/moderate/active)
-- Include realistic step counts (easy: 3000-5000, moderate: 5000-8000, active: 8000-12000 per day)
-- Provide walking times between stops
-- Suggest 2-3 rest stops per half-day (cafes, parks, benches)
-- Include public transport options with accessibility notes
-- Recommend 3 mid-tier restaurants per day (not fast food, not Michelin stars)
-- Include crowd-avoidance tips and best visiting hours
-- Note accessible toilet locations where relevant
-- Provide budget estimates in local currency (realistic mid-range pricing)
-- Suggest 2-3 nearby side trips that don't require much extra effort
-- Be specific about actual place names, not generic descriptions
-- Senior-friendly score: rate terrain flatness, bench availability, crowd levels, medical facility proximity
+- Pace activities for the specified preference (easy/moderate/active)
+- Realistic step counts: easy 3000-5000, moderate 5000-8000, active 8000-12000
+- Group nearby attractions on the same day to minimise travel
+- Include real opening hours for each attraction
+- State the best time to visit each place (fewest crowds, best light)
+- Crowd level per attraction: "low" | "medium" | "high" (for the stated best time)
+- 1-2 rest stops per half-day (cafes, parks)
+- Public transport options with accessibility notes
+- 3 mid-tier restaurants per day
+- Budget estimates in local currency (mid-range realistic pricing)
+- 1-2 nearby side trips per day
+- Keep descriptions concise (max 80 words each)
 
-IMPORTANT: Always respond with valid JSON matching the exact schema provided.`;
+IMPORTANT: Respond ONLY with valid, complete JSON. No markdown, no truncation.`;
 
 function buildPrompt(body: {
   city: string;
@@ -100,43 +100,45 @@ Traveler preferences:
 - Interests: ${body.preferences.interests?.join(", ") || "culture, history, food"}
 - Budget level: ${body.preferences.budgetLevel || "mid"}
 - Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}${travelTimesSection}
-Day-grouping rule: attractions that are close to each other (< 20 min walk apart per the travel times above) should be on the SAME day. Attractions that are far apart (> 30 min walk) should be on SEPARATE days to avoid exhausting the traveler.
+Day-grouping rule: place attractions that are < 20 min walk apart on the SAME day. Attractions > 30 min walk apart go on SEPARATE days.
 
-Return a JSON object with this exact structure:
+Return ONLY a valid JSON object (no markdown) with this exact structure:
 {
-  "title": "string (catchy title for the trip)",
+  "title": "string",
   "city": "${body.city}",
   "country": "${body.country}",
   "days": ${body.days},
   "travelMonth": "${body.travelMonth}",
-  "overview": "string (2-3 sentence trip overview)",
+  "overview": "string (2-3 sentences)",
   "seniorFriendlyScore": number (1-10),
-  "seniorFriendlyNotes": "string (key accessibility notes for this destination)",
-  "totalEstimatedCostLow": number (total trip cost low estimate, excluding flights/hotel),
-  "totalEstimatedCostHigh": number (total trip cost high estimate),
-  "currency": "string (local currency code e.g. EUR, USD, GBP)",
-  "weatherInfo": "string (expected weather in ${body.travelMonth})",
-  "bestTimeToVisit": "string (best hours for each attraction type)",
-  "emergencyNumbers": "string (key emergency numbers: police, ambulance, tourist help)",
+  "seniorFriendlyNotes": "string",
+  "totalEstimatedCostLow": number,
+  "totalEstimatedCostHigh": number,
+  "currency": "string (e.g. EUR)",
+  "weatherInfo": "string",
+  "emergencyNumbers": "string",
   "dayPlans": [
     {
       "dayNumber": 1,
-      "theme": "string (e.g. 'Historic Old Town')",
+      "theme": "string",
       "morning": [
         {
           "name": "string",
-          "description": "string",
+          "description": "string (max 60 words)",
+          "openingHours": "string (e.g. '9:00 AM – 6:00 PM, closed Mondays')",
+          "bestTimeToVisit": "string (e.g. 'Arrive by 9 AM to avoid tour groups')",
+          "crowdLevel": "low" | "medium" | "high",
           "duration": "string (e.g. '2 hours')",
           "walkingMinutes": number,
           "steps": number,
           "cost": "string (e.g. 'Free' or '€15')",
-          "tips": "string (senior-specific tip)",
-          "isRestStop": false,
-          "travelMinutesToNext": number (walking minutes to travel to the NEXT activity, 0 if this is the last activity of the day — use the real Google Maps figures if provided above)
+          "tips": "string (senior-specific, max 30 words)",
+          "isRestStop": boolean,
+          "travelMinutesToNext": number (0 if last activity of day)
         }
       ],
-      "afternoon": [...same structure including travelMinutesToNext...],
-      "evening": [...same structure including travelMinutesToNext...],
+      "afternoon": [same activity structure],
+      "evening": [same activity structure],
       "totalSteps": number,
       "totalWalkingMinutes": number,
       "activeHours": number,
@@ -147,16 +149,16 @@ Return a JSON object with this exact structure:
         {
           "name": "string",
           "cuisine": "string",
-          "priceRange": "string (e.g. '€€' or '$15-25 per person')",
-          "description": "string",
+          "priceRange": "string",
+          "description": "string (max 40 words)",
           "wheelchairFriendly": boolean,
           "nearbyAttraction": "string"
         }
       ],
       "transportOptions": [
         {
-          "mode": "string (e.g. 'Metro', 'Bus', 'Taxi')",
-          "description": "string",
+          "mode": "string",
+          "description": "string (max 40 words)",
           "estimatedCost": "string",
           "accessibilityNotes": "string"
         }
@@ -164,10 +166,10 @@ Return a JSON object with this exact structure:
       "sideTrips": [
         {
           "name": "string",
-          "description": "string",
-          "distance": "string (e.g. '30 min by train')",
+          "description": "string (max 40 words)",
+          "distance": "string",
           "extraSteps": number,
-          "extraTime": "string (e.g. 'Half day')",
+          "extraTime": "string",
           "estimatedCost": "string"
         }
       ],
@@ -201,7 +203,7 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 8192,
+      max_completion_tokens: 16000,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
