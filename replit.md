@@ -128,7 +128,7 @@ Expo React Native mobile app for SeniorTravel.
 - Google redirect URI: `https://senior-travel-planner.replit.app/api/auth/google-callback`
 
 **API Server routes:**
-- `POST /api/itineraries/generate` — AI itinerary generation via OpenAI gpt-5.2
+- `POST /api/itineraries/generate` — AI itinerary generation via OpenAI gpt-5.2; calls Google Maps Distance Matrix before prompt generation to inject real walking times
 - `GET/POST /api/itineraries` — CRUD for stored itineraries
 - `GET /api/destinations` — 12 hardcoded senior-friendly destinations
 - `GET /api/destinations/search?query=` — Search destinations
@@ -137,5 +137,13 @@ Expo React Native mobile app for SeniorTravel.
 - `GET /api/auth/google-callback` — Google callback; stores session in PostgreSQL; redirects to Expo deep link
 - `POST /api/auth/store-session` — Stores OAuth session in PostgreSQL `auth_sessions` table
 - `GET /api/auth/session/:id` — One-time-use session fetch (DELETE+RETURNING); 404 if expired/not found
+- `GET /api/maps/place-photo?query=&width=` — Google Places API (New) text search → CDN photo URL, in-memory cached
+- `POST /api/maps/travel-times` — Google Distance Matrix API; returns walking times between ordered waypoints
+
+**Google Maps integration (`GOOGLE_MAPS_API_KEY` secret):**
+- `artifacts/api-server/src/routes/maps.ts` — place-photo and travel-times proxy routes
+- Swipe screen (`app/swipe/[destinationId].tsx`) batch-fetches per-attraction Google Photos after attractions load; falls back to gradient if no photo
+- Behind-card (next card preview) also uses Google photo if available
+- `DayCard.tsx` shows "X min walk to next stop" connector badges between activities (populated from `travelMinutesToNext` field in generated itinerary)
 
 **Session storage:** PostgreSQL `auth_sessions` table (persistent, survives server restarts). 5-minute TTL with background cleanup. Previously in-memory (wiped on restart).

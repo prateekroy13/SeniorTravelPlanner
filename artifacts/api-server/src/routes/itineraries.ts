@@ -5,6 +5,45 @@ import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+// Fetch real walking travel times between consecutive attractions using
+// Google Distance Matrix API. Returns formatted strings for the AI prompt.
+async function getRealTravelTimes(
+  places: string[],
+  city: string
+): Promise<string> {
+  if (!MAPS_KEY || places.length < 2) return "";
+
+  const lines: string[] = [];
+
+  for (let i = 0; i < places.length - 1; i++) {
+    const origin = `${places[i]}, ${city}`;
+    const dest = `${places[i + 1]}, ${city}`;
+    try {
+      const url =
+        `https://maps.googleapis.com/maps/api/distancematrix/json` +
+        `?origins=${encodeURIComponent(origin)}` +
+        `&destinations=${encodeURIComponent(dest)}` +
+        `&mode=walking` +
+        `&key=${MAPS_KEY}`;
+      const r = await fetch(url);
+      const data = (await r.json()) as any;
+      const el = data?.rows?.[0]?.elements?.[0];
+      if (el?.status === "OK") {
+        lines.push(
+          `  - ${places[i]} → ${places[i + 1]}: ${el.duration.text} walk, ${el.distance.text}`
+        );
+      }
+    } catch {
+      // skip this pair on error
+    }
+  }
+
+  if (!lines.length) return "";
+  return `\nREAL GOOGLE MAPS TRAVEL TIMES between selected attractions (use these exact figures in the itinerary):\n${lines.join("\n")}\n`;
+}
+
 const SYSTEM_PROMPT = `You are a senior-first travel planner AI. Generate detailed, realistic travel itineraries specifically designed for senior travelers (ages 60+).
 
 Key requirements:
@@ -30,6 +69,7 @@ function buildPrompt(body: {
   travelMonth: string;
   likedAttractions?: string[];
   likedRestaurants?: string[];
+  realTravelTimes?: string;
   preferences: {
     pace: string;
     maxStepsPerDay?: number;
@@ -41,13 +81,15 @@ function buildPrompt(body: {
 }) {
   const likedSection =
     body.likedAttractions && body.likedAttractions.length > 0
-      ? `\nMUST INCLUDE these specific attractions the traveler loved (they swiped right on them): ${body.likedAttractions.join(", ")}. Include these in the itinerary spread across appropriate days.\n`
+      ? `\nMUST INCLUDE these specific attractions the traveler loved (they swiped right on them): ${body.likedAttractions.join(", ")}. Spread them across appropriate days — group nearby ones on the same day to minimise travel.\n`
       : "";
 
   const restaurantSection =
     body.likedRestaurants && body.likedRestaurants.length > 0
       ? `\nMUST INCLUDE these specific restaurants the traveler loved for their meals: ${body.likedRestaurants.join(", ")}. Schedule these for lunch or dinner across the appropriate days — do not cluster them all on one day.\n`
       : "";
+
+  const travelTimesSection = body.realTravelTimes || "";
 
   return `Generate a ${body.days}-day itinerary for ${body.city}, ${body.country} in ${body.travelMonth}.
 
@@ -57,7 +99,8 @@ Traveler preferences:
 - Dietary needs: ${body.preferences.dietaryNeeds?.join(", ") || "none specified"}
 - Interests: ${body.preferences.interests?.join(", ") || "culture, history, food"}
 - Budget level: ${body.preferences.budgetLevel || "mid"}
-- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}
+- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}${travelTimesSection}
+Day-grouping rule: attractions that are close to each other (< 20 min walk apart per the travel times above) should be on the SAME day. Attractions that are far apart (> 30 min walk) should be on SEPARATE days to avoid exhausting the traveler.
 
 Return a JSON object with this exact structure:
 {
@@ -88,11 +131,12 @@ Return a JSON object with this exact structure:
           "steps": number,
           "cost": "string (e.g. 'Free' or '€15')",
           "tips": "string (senior-specific tip)",
-          "isRestStop": false
+          "isRestStop": false,
+          "travelMinutesToNext": number (walking minutes to travel to the NEXT activity, 0 if this is the last activity of the day — use the real Google Maps figures if provided above)
         }
       ],
-      "afternoon": [...same structure...],
-      "evening": [...same structure...],
+      "afternoon": [...same structure including travelMinutesToNext...],
+      "evening": [...same structure including travelMinutesToNext...],
       "totalSteps": number,
       "totalWalkingMinutes": number,
       "activeHours": number,
@@ -143,7 +187,17 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    const prompt = buildPrompt({ city, country, days, travelMonth, preferences, likedAttractions, likedRestaurants });
+    // Fetch real walking travel times between liked attractions to help the AI
+    // correctly group close attractions on the same day and separate far ones.
+    const realTravelTimes =
+      likedAttractions && likedAttractions.length > 1
+        ? await getRealTravelTimes(likedAttractions, `${city}, ${country}`)
+        : "";
+
+    const prompt = buildPrompt({
+      city, country, days, travelMonth, preferences,
+      likedAttractions, likedRestaurants, realTravelTimes,
+    });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",

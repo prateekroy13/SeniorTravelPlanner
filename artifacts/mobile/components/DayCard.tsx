@@ -19,6 +19,7 @@ interface Activity {
   cost: string;
   tips?: string;
   isRestStop?: boolean;
+  travelMinutesToNext?: number;
 }
 
 interface Restaurant {
@@ -209,7 +210,21 @@ export function DayDetail({ day }: DayDetailProps) {
                   <Text style={styles.timeLabelText}>{label}</Text>
                 </View>
                 {activities.map((act, i) => (
-                  <ActivityItem key={i} activity={act} />
+                  <React.Fragment key={i}>
+                    <ActivityItem activity={act} />
+                    {act.travelMinutesToNext != null && act.travelMinutesToNext > 0 && (
+                      <View style={styles.travelConnector}>
+                        <View style={styles.travelLine} />
+                        <View style={styles.travelBadge}>
+                          <Feather name="navigation" size={10} color={Colors.light.primary} />
+                          <Text style={styles.travelText}>
+                            {act.travelMinutesToNext} min walk to next stop
+                          </Text>
+                        </View>
+                        <View style={styles.travelLine} />
+                      </View>
+                    )}
+                  </React.Fragment>
                 ))}
               </View>
             ) : null
@@ -654,6 +669,32 @@ const styles = StyleSheet.create({
   },
   activityItemRest: {
     opacity: 0.85,
+  },
+  travelConnector: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 4,
+    marginLeft: 4,
+    gap: 8,
+  },
+  travelLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.light.borderLight,
+  },
+  travelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.light.primaryPale,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  travelText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.primary,
   },
   activityLeft: {
     alignItems: "center",

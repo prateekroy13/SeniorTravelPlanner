@@ -26,20 +26,6 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
-const DESTINATION_SPOT_IMAGES: Record<string, string> = {
-  "lisbon":                   "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&q=80",
-  "rome":                     "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=800&q=80",
-  "kyoto":                    "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80",
-  "amsterdam":                "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=800&q=80",
-  "barcelona":                "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=800&q=80",
-  "vienna":                   "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?auto=format&fit=crop&w=800&q=80",
-  "prague":                   "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80",
-  "singapore":                "https://images.unsplash.com/photo-1509356843151-3e7d96241e11?auto=format&fit=crop&w=800&q=80",
-  "edinburgh":                "https://images.unsplash.com/photo-1596394723269-b2cbca4e6313?auto=format&fit=crop&w=800&q=80",
-  "quebec-city":              "https://images.unsplash.com/photo-1547234935-80c7145ec969?auto=format&fit=crop&w=800&q=80",
-  "dubrovnik":                "https://images.unsplash.com/photo-1549180030-48bf079fb38a?auto=format&fit=crop&w=800&q=80",
-  "new-zealand-queenstown":   "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=800&q=80",
-};
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
@@ -79,12 +65,37 @@ export default function SwipeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState<Attraction[]>([]);
   const [finished, setFinished] = useState(false);
+  const [attractionPhotos, setAttractionPhotos] = useState<Record<string, string>>({});
 
   const { data: attractions = [], isLoading, isError } = useQuery({
     queryKey: ["attractions", destinationId],
     queryFn: () => fetchAttractions(destinationId!),
     enabled: !!destinationId,
   });
+
+  // Fetch a real Google Places photo for each attraction as soon as the list loads
+  React.useEffect(() => {
+    if (!attractions.length) return;
+    const fetchPhotos = async () => {
+      const results: Record<string, string> = {};
+      await Promise.all(
+        attractions.map(async (a) => {
+          try {
+            const query = encodeURIComponent(`${a.name} ${city}`);
+            const res = await fetch(`${BASE_URL}/api/maps/place-photo?query=${query}&width=800`);
+            if (res.ok) {
+              const json = await res.json();
+              if (json.url) results[a.id] = json.url;
+            }
+          } catch {
+            // leave blank — card falls back to gradient
+          }
+        })
+      );
+      setAttractionPhotos(results);
+    };
+    fetchPhotos();
+  }, [attractions, city]);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const bottomPadding = Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0);
@@ -215,14 +226,29 @@ export default function SwipeScreen() {
       <View style={styles.cardArea}>
         {nextCard && (
           <View style={styles.behindCard} pointerEvents="none">
-            <LinearGradient
-              colors={nextCard.gradient}
-              style={styles.behindCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.behindEmoji}>{nextCard.emoji}</Text>
-            </LinearGradient>
+            {attractionPhotos[nextCard.id] ? (
+              <View style={[styles.behindCardGradient, { overflow: "hidden" }]}>
+                <Image
+                  source={{ uri: attractionPhotos[nextCard.id] }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                />
+                <LinearGradient
+                  colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.6)"]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={styles.behindEmoji}>{nextCard.emoji}</Text>
+              </View>
+            ) : (
+              <LinearGradient
+                colors={nextCard.gradient}
+                style={styles.behindCardGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.behindEmoji}>{nextCard.emoji}</Text>
+              </LinearGradient>
+            )}
           </View>
         )}
 
@@ -230,7 +256,7 @@ export default function SwipeScreen() {
           <SwipeCard
             key={currentIndex}
             attraction={currentCard}
-            destinationId={destinationId ?? ""}
+            photoUrl={attractionPhotos[currentCard.id]}
             onLike={() => handleSwipeAction("like", currentCard)}
             onReject={() => handleSwipeAction("reject", currentCard)}
           />
@@ -262,12 +288,12 @@ export default function SwipeScreen() {
 
 function SwipeCard({
   attraction,
-  destinationId,
+  photoUrl,
   onLike,
   onReject,
 }: {
   attraction: Attraction;
-  destinationId: string;
+  photoUrl?: string;
   onLike: () => void;
   onReject: () => void;
 }) {
@@ -323,20 +349,26 @@ function SwipeCard({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], "clamp"),
   }));
 
-  const imgUrl = DESTINATION_SPOT_IMAGES[destinationId]
-    ?? "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80";
-
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, cardStyle]}>
         <View style={styles.cardGradient}>
-          <Image
-            source={{ uri: imgUrl }}
-            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
-            contentFit="cover"
-          />
+          {photoUrl ? (
+            <Image
+              source={{ uri: photoUrl }}
+              style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+              contentFit="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={attraction.gradient}
+              style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          )}
           <LinearGradient
-            colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.72)"]}
+            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
             style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
