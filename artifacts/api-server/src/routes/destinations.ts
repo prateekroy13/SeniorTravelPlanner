@@ -135,6 +135,39 @@ const DESTINATIONS = [
     terrain: "Town is flat, many gentle nature walks, scenic drives available",
     imageUrl: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=600&q=80",
   },
+  {
+    id: "tokyo",
+    city: "Tokyo",
+    country: "Japan",
+    description: "A dazzling megacity that's surprisingly senior-friendly — immaculate streets, world-class public transport with lifts everywhere, and some of the best food on the planet.",
+    seniorFriendlyScore: 9.1,
+    highlights: ["Senso-ji Temple", "Shinjuku Gyoen Garden", "Tsukiji Outer Market", "Tokyo Skytree"],
+    bestMonths: ["March", "April", "October", "November"],
+    terrain: "Mostly flat; metro stations have lifts, wide pavements throughout",
+    imageUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "san-francisco",
+    city: "San Francisco",
+    country: "USA",
+    description: "One of America's most beautiful cities with iconic views, world-class food, and a compact, explorable core. Hilly but cable cars and accessible transport make it very manageable.",
+    seniorFriendlyScore: 7.8,
+    highlights: ["Golden Gate Bridge", "Fisherman's Wharf", "Alcatraz Island", "Golden Gate Park"],
+    bestMonths: ["September", "October", "November", "May"],
+    terrain: "Hilly city; cable cars, Muni buses, and flat waterfront make most sights accessible",
+    imageUrl: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "kuala-lumpur",
+    city: "Kuala Lumpur",
+    country: "Malaysia",
+    description: "A vibrant, modern capital with iconic twin towers, incredible multi-cultural food, and air-conditioned malls and metro connecting everything. Very accessible and great value.",
+    seniorFriendlyScore: 8.6,
+    highlights: ["Petronas Twin Towers", "Batu Caves", "Jalan Alor Food Street", "KL Tower"],
+    bestMonths: ["January", "February", "July", "August"],
+    terrain: "Flat modern city centre; excellent air-conditioned metro with lifts throughout",
+    imageUrl: "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=600&q=80",
+  },
 ];
 
 const ATTRACTIONS: Record<string, Attraction[]> = {
@@ -197,6 +230,36 @@ const ATTRACTIONS: Record<string, Attraction[]> = {
     { id: "sentosa", name: "Sentosa Island", category: "Experience", emoji: "🏝️", description: "Resort island with cable car, beaches, and easy cable car. Wheelchair-friendly throughout.", seniorScore: 8.8, walkingMinutes: 15, steps: 1000, gradient: ["#F57F17", "#E65100"] },
     { id: "botanic-gardens", name: "Singapore Botanic Gardens", category: "Nature", emoji: "🌺", description: "UNESCO World Heritage tropical garden. Flat, shaded, with a National Orchid Garden.", seniorScore: 9.6, walkingMinutes: 30, steps: 2500, gradient: ["#2E7D32", "#1B5E20"] },
   ],
+  tokyo: [
+    { id: "sensoji", name: "Senso-ji Temple", category: "Culture", emoji: "⛩️", description: "Tokyo's oldest and most famous temple in Asakusa. Wide paved approach, plenty of seating, wonderful at dawn before crowds arrive.", seniorScore: 9.3, walkingMinutes: 20, steps: 1600, gradient: ["#C62828", "#B71C1C"] },
+    { id: "shinjuku-gyoen", name: "Shinjuku Gyoen Garden", category: "Nature", emoji: "🌸", description: "Tokyo's most beautiful park — a serene mix of Japanese, French and English garden styles. Flat paths, ample benches, and exquisite cherry blossoms in spring.", seniorScore: 9.7, walkingMinutes: 25, steps: 2200, gradient: ["#1A6B4A", "#0D4A32"] },
+    { id: "tsukiji-market", name: "Tsukiji Outer Market", category: "Food", emoji: "🐟", description: "The world-famous fish market's outer section with street food stalls and seafood breakfast spots. Flat, covered, and endlessly fascinating.", seniorScore: 9.4, walkingMinutes: 10, steps: 800, gradient: ["#E65100", "#BF360C"] },
+    { id: "tokyo-skytree", name: "Tokyo Skytree", category: "Architecture", emoji: "🗼", description: "The world's tallest broadcasting tower with two observation decks. High-speed lift to the top — no stairs required, panoramic views of Tokyo.", seniorScore: 9.0, walkingMinutes: 5, steps: 400, gradient: ["#1565C0", "#0D47A1"] },
+    { id: "imperial-palace", name: "Imperial Palace East Gardens", category: "Nature & History", emoji: "🌿", description: "Beautiful free gardens on the grounds of the Imperial Palace. Wide flat paths, traditional stone walls, and tranquil ponds.", seniorScore: 9.5, walkingMinutes: 30, steps: 2500, gradient: ["#2E7D32", "#1B5E20"] },
+    { id: "hamarikyu", name: "Hamarikyu Gardens", category: "Nature", emoji: "🏞️", description: "Spectacular tidal garden in the heart of Tokyo. Flat paths, a traditional tea house on the pond, and stunning views of the city skyline.", seniorScore: 9.6, walkingMinutes: 25, steps: 1800, gradient: ["#1A7B7B", "#0E4E4E"] },
+    { id: "ueno-park", name: "Ueno Park & Museums", category: "Culture", emoji: "🦁", description: "Huge green park housing the Tokyo National Museum, zoo, and multiple galleries. Wheelchair-friendly throughout with cafes at every turn.", seniorScore: 9.2, walkingMinutes: 20, steps: 1500, gradient: ["#5D4037", "#3E2723"] },
+    { id: "shibuya-crossing", name: "Shibuya Crossing (from above)", category: "Experience", emoji: "🚦", description: "Watch the world's busiest crossing from a seated window seat at Starbucks or Mag's Park — no walking required, pure spectacle.", seniorScore: 9.1, walkingMinutes: 3, steps: 200, gradient: ["#37474F", "#263238"] },
+  ],
+  "san-francisco": [
+    { id: "golden-gate-bridge", name: "Golden Gate Bridge Vista", category: "Architecture", emoji: "🌉", description: "Walk the flat Battery Spencer viewpoint or the bridge's east sidewalk for breathtaking views. Car-free viewing points well-signposted.", seniorScore: 8.8, walkingMinutes: 20, steps: 1500, gradient: ["#C0392B", "#922B21"] },
+    { id: "fishermans-wharf", name: "Fisherman's Wharf", category: "Food & Experience", emoji: "🦀", description: "Lively waterfront with clam chowder in bread bowls, sea lion viewing at Pier 39, and sea air. Entirely flat and very accessible.", seniorScore: 9.2, walkingMinutes: 15, steps: 1200, gradient: ["#1565C0", "#0D47A1"] },
+    { id: "alcatraz", name: "Alcatraz Island", category: "Historic", emoji: "🏝️", description: "Fascinating former prison island reached by a 15-min ferry. Award-winning audio tour at your own pace. Some slopes on the island — golf cart available.", seniorScore: 8.5, walkingMinutes: 25, steps: 2000, gradient: ["#37474F", "#263238"] },
+    { id: "cable-car", name: "Historic Cable Car Ride", category: "Experience", emoji: "🚋", description: "Ride the world's last manually operated cable car system. Sit inside for the full experience — a living piece of San Francisco history.", seniorScore: 9.5, walkingMinutes: 3, steps: 200, gradient: ["#C4622D", "#8B3A1A"] },
+    { id: "golden-gate-park", name: "Golden Gate Park", category: "Nature", emoji: "🌲", description: "Vast park with the de Young Museum, Japanese Tea Garden, and free Botanical Garden. Shuttle buses run within the park.", seniorScore: 9.0, walkingMinutes: 30, steps: 2200, gradient: ["#1A6B4A", "#0D4A32"] },
+    { id: "ferry-building", name: "Ferry Building Marketplace", category: "Food", emoji: "🧺", description: "Beautiful Beaux Arts terminal with a superb farmers market and gourmet food hall. Flat, one long hall — easy to explore at your own pace.", seniorScore: 9.4, walkingMinutes: 10, steps: 700, gradient: ["#F57F17", "#E65100"] },
+    { id: "chinatown-sf", name: "San Francisco Chinatown", category: "Culture", emoji: "🏮", description: "America's oldest Chinatown with dim sum bakeries, herbal shops, and a vibrant street life. Flat Grant Avenue is the main drag.", seniorScore: 8.7, walkingMinutes: 20, steps: 1500, gradient: ["#C62828", "#B71C1C"] },
+    { id: "palace-of-fine-arts", name: "Palace of Fine Arts", category: "Architecture", emoji: "🏛️", description: "Romantic domed rotunda reflected in a lagoon — a photogenic haven of calm. Completely flat, free to visit, with many benches.", seniorScore: 9.6, walkingMinutes: 10, steps: 600, gradient: ["#7B3F8A", "#4A2055"] },
+  ],
+  "kuala-lumpur": [
+    { id: "petronas-towers", name: "Petronas Twin Towers", category: "Architecture", emoji: "🏙️", description: "The world's tallest twin towers with a sky bridge on the 41st floor and observation deck on the 86th. Fully accessible lifts, spectacular city views.", seniorScore: 9.2, walkingMinutes: 10, steps: 700, gradient: ["#1565C0", "#0D47A1"] },
+    { id: "batu-caves", name: "Batu Caves", category: "Culture", emoji: "🦁", description: "Sacred Hindu cave temple reached by 272 colourful steps — or admire the giant golden Murugan statue from below. Manageable in the morning cool.", seniorScore: 7.8, walkingMinutes: 30, steps: 3500, gradient: ["#F57F17", "#E65100"] },
+    { id: "kl-tower", name: "KL Tower Observation Deck", category: "Architecture", emoji: "🗼", description: "360° views of KL's skyline from 421m. Glass floor observation deck, revolving restaurant, fully accessible by lift.", seniorScore: 9.0, walkingMinutes: 5, steps: 300, gradient: ["#7B3F8A", "#4A2055"] },
+    { id: "jalan-alor", name: "Jalan Alor Food Street", category: "Food", emoji: "🍢", description: "KL's most famous food street, lively at night with hundreds of hawker stalls. Flat, shaded by awnings, and an incredible assault on the senses.", seniorScore: 9.5, walkingMinutes: 10, steps: 700, gradient: ["#E65100", "#BF360C"] },
+    { id: "klcc-park", name: "KLCC Park", category: "Nature", emoji: "🌴", description: "Beautiful landscaped park directly beneath the Petronas Towers. Flat jogging/walking path, fountains, and a children's pool — lovely for a morning stroll.", seniorScore: 9.4, walkingMinutes: 20, steps: 1500, gradient: ["#1A6B4A", "#0D4A32"] },
+    { id: "central-market", name: "Central Market (Pasar Seni)", category: "Culture & Shopping", emoji: "🎨", description: "Iconic art deco market hall filled with Malaysian crafts, batik, and local art. Fully air-conditioned, flat floors, and great for souvenirs.", seniorScore: 9.1, walkingMinutes: 8, steps: 500, gradient: ["#C4622D", "#8B3A1A"] },
+    { id: "islamic-arts-museum", name: "Islamic Arts Museum", category: "Art", emoji: "🕌", description: "One of Southeast Asia's finest museums with stunning architecture and accessible galleries. Air-conditioned throughout, lovely cafe inside.", seniorScore: 9.3, walkingMinutes: 10, steps: 700, gradient: ["#1A7B7B", "#0E4E4E"] },
+    { id: "merdeka-square", name: "Merdeka Square", category: "Historic", emoji: "🏛️", description: "Historic square where Malaysia's independence was declared, surrounded by Moorish-Gothic colonial buildings. Flat, open, and very photogenic.", seniorScore: 8.8, walkingMinutes: 15, steps: 900, gradient: ["#37474F", "#263238"] },
+  ],
   prague: [
     { id: "prague-castle", name: "Prague Castle", category: "Historic", emoji: "🏰", description: "World's largest ancient castle complex. Funicular available; stunning city views.", seniorScore: 8.5, walkingMinutes: 30, steps: 2800, gradient: ["#37474F", "#263238"] },
     { id: "charles-bridge", name: "Charles Bridge", category: "Architecture", emoji: "🌉", description: "Iconic 14th-century stone bridge lined with baroque statues. Best at sunrise.", seniorScore: 9.0, walkingMinutes: 15, steps: 1200, gradient: ["#5D4037", "#3E2723"] },
@@ -233,13 +296,13 @@ function getDefaultAttractions(destination: { city: string; highlights: string[]
 }
 
 router.get("/destinations", (_req: Request, res: Response) => {
-  res.json(DESTINATIONS.slice(0, 8));
+  res.json(DESTINATIONS);
 });
 
 router.get("/destinations/search", (req: Request, res: Response) => {
   const query = ((req.query.query as string) || "").toLowerCase().trim();
   if (!query) {
-    res.json(DESTINATIONS.slice(0, 8));
+    res.json(DESTINATIONS);
     return;
   }
 
@@ -345,6 +408,27 @@ const RESTAURANTS: Record<string, Restaurant[]> = {
     { id: "eska", name: "Eska", cuisine: "Modern Czech Bakery", priceLevel: 2, specialty: "Sourdough with cultured butter & fermenti", description: "Pioneer of the Prague food scene. Stunning breakfast/lunch with house-fermented everything and exceptional bread.", seniorScore: 9.2, mealType: "lunch", emoji: "🥖", gradient: ["#5C4A1A", "#3A2E10"] },
     { id: "mlejnice", name: "U Mlejnice", cuisine: "Czech Tavern", priceLevel: 1, specialty: "Roasted duck with red cabbage & knedlíky", description: "Medieval cellar tavern near Old Town Square. Dark, atmospheric, incredibly affordable. Duck and dumplings are superb.", seniorScore: 8.8, mealType: "dinner", emoji: "🦆", gradient: ["#3A1A1A", "#250D0D"] },
     { id: "lehka-hlava", name: "Lehká Hlava (Clear Head)", cuisine: "Vegetarian Czech", priceLevel: 2, specialty: "Smoked tofu goulash with bread dumplings", description: "Prague's best vegetarian restaurant. Whimsical décor, creative takes on Czech classics without meat.", seniorScore: 9.0, mealType: "both", emoji: "🌱", gradient: ["#1A5C3A", "#0D3A22"] },
+  ],
+  tokyo: [
+    { id: "tsuta-ramen", name: "Tsuta (Michelin Ramen)", cuisine: "Japanese Ramen", priceLevel: 1, specialty: "Shoyu soba with truffle oil", description: "The world's first Michelin-starred ramen restaurant. Small, quiet, utterly refined bowls. Pre-book online — worth every step.", seniorScore: 9.0, mealType: "lunch", emoji: "🍜", gradient: ["#7B2A1A", "#4E1A10"] },
+    { id: "tempura-kondo", name: "Tempura Kondo", cuisine: "Japanese Tempura", priceLevel: 3, specialty: "Vegetable and seafood tempura omakase", description: "Counter tempura at its finest — chef Fumio Kondo elevates vegetables to an art form. Quiet, calm, fully accessible.", seniorScore: 9.5, mealType: "dinner", emoji: "🍤", gradient: ["#1A4A5C", "#0D2E3A"] },
+    { id: "gonpachi", name: "Gonpachi Nishi-Azabu", cuisine: "Japanese Izakaya", priceLevel: 2, specialty: "Yakitori skewers & cold Sapporo draft", description: "The restaurant that inspired Kill Bill. Multi-level wooden interior, excellent grilled skewers and sake. Very senior-friendly pace.", seniorScore: 9.2, mealType: "dinner", emoji: "🍶", gradient: ["#5C3A1A", "#3A2510"] },
+    { id: "yoshino-sushi", name: "Sushi Yoshino", cuisine: "Traditional Sushi", priceLevel: 2, specialty: "Edomae nigiri omakase set", description: "Classic Tokyo sushi counter in Ginza. The lunchtime omakase is superb value. Quiet, refined, unhurried.", seniorScore: 9.4, mealType: "lunch", emoji: "🍣", gradient: ["#1A1A5C", "#0D0D3A"] },
+    { id: "kagari-chicken", name: "Kagari (Chicken Paitan Ramen)", cuisine: "Japanese Ramen", priceLevel: 1, specialty: "Rich chicken broth ramen with yuzu", description: "Beautifully rich chicken paitan broth — silky, warming, and deeply comforting. Small queue, but moves fast.", seniorScore: 9.3, mealType: "lunch", emoji: "🍗", gradient: ["#7B5C1A", "#4E3A10"] },
+  ],
+  "san-francisco": [
+    { id: "zuni-cafe", name: "Zuni Café", cuisine: "Californian", priceLevel: 2, specialty: "Brick-oven roasted chicken for two", description: "SF institution since 1979. The legendary roasted chicken takes 45 min — worth every second. Warm, unhurried atmosphere.", seniorScore: 9.5, mealType: "both", emoji: "🍗", gradient: ["#C4622D", "#8B3A1A"] },
+    { id: "swan-oyster", name: "Swan Oyster Depot", cuisine: "Seafood Counter", priceLevel: 2, specialty: "Dungeness crab cocktail & raw oysters", description: "A San Francisco legend since 1912. Counter seating only, cash only — but the freshest seafood in the city. Arrive early.", seniorScore: 8.8, mealType: "lunch", emoji: "🦪", gradient: ["#1A4A5C", "#0D2E3A"] },
+    { id: "state-bird", name: "State Bird Provisions", cuisine: "Californian Dim Sum", priceLevel: 2, specialty: "State bird (quail) with provisions", description: "Genius dim sum–style Californian dining. Small plates wheeled tableside, no fixed menu — perfect for sampling and sharing.", seniorScore: 9.2, mealType: "dinner", emoji: "🦜", gradient: ["#1A6B4A", "#0D4A32"] },
+    { id: "tartine", name: "Tartine Manufactory", cuisine: "Californian Bakery", priceLevel: 1, specialty: "Country sourdough loaf & morning bun", description: "The most influential bakery in America. Enormous airy space, excellent coffee, incredible pastries. Perfect morning stop.", seniorScore: 9.4, mealType: "lunch", emoji: "🥐", gradient: ["#8B6914", "#6B5010"] },
+    { id: "gary-danko", name: "Gary Danko", cuisine: "Contemporary American Fine Dining", priceLevel: 3, specialty: "5-course American tasting menu", description: "SF's most celebrated fine dining. Impeccable service, full accessibility, one Michelin star. A special-occasion landmark.", seniorScore: 9.1, mealType: "dinner", emoji: "⭐", gradient: ["#2A1A5C", "#1A0D3A"] },
+  ],
+  "kuala-lumpur": [
+    { id: "jalan-alor-stalls", name: "Jalan Alor Hawker Stalls", cuisine: "Malaysian Street Food", priceLevel: 1, specialty: "Char kway teow & BBQ chicken wings", description: "KL's most atmospheric hawker street at night. Plastic stools, blazing woks, incredible food at very low prices.", seniorScore: 9.6, mealType: "dinner", emoji: "🍢", gradient: ["#E65100", "#BF360C"] },
+    { id: "rebung", name: "Rebung Chef Ismail", cuisine: "Traditional Malay", priceLevel: 2, specialty: "Nasi lemak & rendang spread", description: "Celebrity chef Ismail's restaurant celebrating traditional Malay kampung cooking. Buffet-style, generous, and utterly authentic.", seniorScore: 9.4, mealType: "both", emoji: "🌴", gradient: ["#1A6B4A", "#0D4A32"] },
+    { id: "third-wave-kl", name: "Merchant's Lane", cuisine: "Nyonya Fusion Café", priceLevel: 1, specialty: "Nyonya laksa & onde onde cake", description: "Beautiful heritage shophouse café in Chinatown. Relaxed daytime venue with fantastic laksa and traditional Peranakan cakes.", seniorScore: 9.2, mealType: "lunch", emoji: "🏮", gradient: ["#C4622D", "#8B3A1A"] },
+    { id: "lai-ching-yuen", name: "Lai Ching Yuen (Grand Millennium)", cuisine: "Cantonese Dim Sum", priceLevel: 2, specialty: "Har gow, char siu bao, egg tarts", description: "KL's finest Cantonese dim sum in an elegant hotel setting. Trolleys, proper teapots, and exemplary service.", seniorScore: 9.5, mealType: "lunch", emoji: "🫖", gradient: ["#1A3A5C", "#0D2540"] },
+    { id: "nadodi", name: "Nadodi", cuisine: "South Indian Tasting Menu", priceLevel: 3, specialty: "12-course nomadic South Indian menu", description: "One of Asia's most exciting restaurants — elevated South Indian cooking with zero compromise. Michelin-recommended, unforgettable.", seniorScore: 8.8, mealType: "dinner", emoji: "⭐", gradient: ["#7B1A1A", "#4E1010"] },
   ],
 };
 
