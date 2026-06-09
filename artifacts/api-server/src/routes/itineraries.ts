@@ -202,7 +202,7 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: "gpt-4o",
       max_completion_tokens: 16000,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

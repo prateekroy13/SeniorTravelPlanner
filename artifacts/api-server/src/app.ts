@@ -1,8 +1,27 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 
 const app: Express = express();
+
+// 5 AI generations per IP per hour — protects OpenAI spend
+const generateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many itinerary requests. Please try again in an hour." },
+});
+
+// 200 general API requests per IP per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please slow down." },
+});
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
@@ -153,6 +172,8 @@ app.get("/", (_req, res) => {
 </html>`);
 });
 
+app.use("/api/itineraries/generate", generateLimiter);
+app.use("/api", apiLimiter);
 app.use("/api", router);
 
 export default app;
