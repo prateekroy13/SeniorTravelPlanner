@@ -34,7 +34,7 @@ app.get("/", (_req, res) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SeniorTravel</title>
+  <title>Tuttle</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -140,7 +140,7 @@ app.get("/", (_req, res) => {
 <body>
   <div class="card">
     <div class="icon">✈️</div>
-    <h1>SeniorTravel</h1>
+    <h1>Tuttle</h1>
     <p class="tagline">AI-powered travel itineraries designed<br>for the 60+ traveller</p>
     <div class="divider"></div>
     <div class="steps">
@@ -155,7 +155,7 @@ app.get("/", (_req, res) => {
         <div class="step-num">2</div>
         <div class="step-text">
           <strong>Open the link on your phone</strong>
-          <span>Visit <strong style="color:#8aad96">seniortravel.replit.app</strong> on your phone's browser</span>
+          <span>Visit <strong style="color:#8aad96">senior-travel-planner.replit.app</strong> on your phone's browser</span>
         </div>
       </div>
       <div class="step">

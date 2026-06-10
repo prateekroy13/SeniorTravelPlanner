@@ -1,0 +1,2 @@
+- [Production domain](production-domain.md) — active prod URL is senior-travel-planner.replit.app; seniortravel.replit.app is dead (404s).
+- [Static pages on API server](api-server-static-pages.md) — `/` and `/privacy` are HTML served from api-server app.ts; code changes need a re-publish to reach prod.
