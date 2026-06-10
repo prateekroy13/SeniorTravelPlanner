@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.tuttle.app"
     },
     "android": {
-      "package": "com.tuttle.app",
+      "package": "com.tuttleapp.mobile",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
