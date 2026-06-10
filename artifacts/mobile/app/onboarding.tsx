@@ -100,7 +100,7 @@ export default function OnboardingScreen() {
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Feather name="map" size={20} color="rgba(255,255,255,0.9)" />
-          <Text style={styles.logoText}>SeniorTravel</Text>
+          <Text style={styles.logoText}>Tuttle</Text>
         </View>
 
         <View style={styles.progressBar}>

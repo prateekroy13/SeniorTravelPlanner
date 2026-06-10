@@ -257,7 +257,7 @@ export default function ExploreScreen() {
               </View>
 
               <View style={[styles.section, styles.tipsSection]}>
-                <Text style={styles.sectionTitle}>Senior Travel Tips</Text>
+                <Text style={styles.sectionTitle}>Travel Tips</Text>
                 <TipCard
                   icon="shield"
                   title="Travel Insurance"

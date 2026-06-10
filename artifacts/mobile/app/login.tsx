@@ -80,7 +80,7 @@ export default function LoginScreen() {
           </LinearGradient>
         </View>
 
-        <Text style={styles.appName}>SeniorTravel</Text>
+        <Text style={styles.appName}>Tuttle</Text>
         <Text style={styles.tagline}>Explore the world{"\n"}at your own pace</Text>
       </View>
 

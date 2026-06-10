@@ -357,7 +357,7 @@ export default function ProfileScreen() {
                 <Feather name="info" size={16} color={Colors.light.primary} />
               </View>
               <View style={styles.appRowText}>
-                <Text style={styles.appRowLabel}>About SeniorTravel</Text>
+                <Text style={styles.appRowLabel}>About Tuttle</Text>
                 <Text style={styles.appRowSub}>AI-powered itineraries for senior explorers</Text>
               </View>
             </View>
@@ -411,7 +411,7 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>SeniorTravel v1.0</Text>
+          <Text style={styles.footerText}>Tuttle v1.0</Text>
           <Text style={styles.footerSub}>Explore the world comfortably</Text>
         </View>
       </ScrollView>
