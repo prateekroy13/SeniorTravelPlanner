@@ -277,6 +277,107 @@ app.get("/privacy", (_req, res) => {
 </html>`);
 });
 
+app.get("/delete-account", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete Your Account - Tuttle</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #071209;
+      color: #f0ede8;
+      line-height: 1.6;
+      padding: 48px 20px;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #0f1f13;
+      border: 1px solid #1A6B4A40;
+      border-radius: 20px;
+      padding: 40px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .updated {
+      font-size: 13px;
+      color: #6b8a74;
+      margin-bottom: 28px;
+    }
+    h2 {
+      font-size: 18px;
+      color: #8aad96;
+      margin: 28px 0 10px;
+    }
+    p, li {
+      font-size: 15px;
+      color: #e8dfd5;
+      margin-bottom: 10px;
+    }
+    ul, ol {
+      padding-left: 22px;
+      margin-bottom: 10px;
+    }
+    a {
+      color: #E8A951;
+    }
+    .highlight {
+      background: #14241a;
+      border: 1px solid #1A6B4A40;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Delete Your Tuttle Account</h1>
+    <p class="updated">Last updated: June 10, 2026</p>
+
+    <p>This page explains how to request deletion of your Tuttle account and associated data, and what happens to your information when you do.</p>
+
+    <h2>How to Request Deletion</h2>
+    <div class="highlight">
+      <ol>
+        <li>Send an email to <a href="mailto:prateek.roy13@gmail.com?subject=Delete%20my%20Tuttle%20account">prateek.roy13@gmail.com</a> from the email address associated with your Google account on Tuttle.</li>
+        <li>Use the subject line "Delete my Tuttle account" and include the email address linked to your account.</li>
+        <li>We will verify your request and confirm by email once it has been processed.</li>
+      </ol>
+    </div>
+    <p>Requests are processed within 30 days of receipt.</p>
+
+    <h2>What Gets Deleted</h2>
+    <ul>
+      <li>Your account profile information (name, email address, profile picture) received from Google Sign-In.</li>
+      <li>All itineraries you have generated or saved.</li>
+      <li>Your saved travel preferences.</li>
+    </ul>
+
+    <h2>What May Be Retained</h2>
+    <ul>
+      <li><strong>Sparks posts:</strong> Photos and captions you've shared publicly to Sparks are not linked to your account email, so they are not automatically removed when your account is deleted. If you'd like specific Sparks posts removed, mention the display name used and approximate posting date in your deletion request.</li>
+    </ul>
+
+    <h2>Deleting Individual Items Without Deleting Your Account</h2>
+    <p>You can delete individual saved itineraries at any time directly within the app: open the <strong>Saved</strong> tab, select an itinerary, and choose <strong>Delete</strong>. This does not require deleting your whole account.</p>
+
+    <h2>Contact Us</h2>
+    <p>For any questions about this process, contact us at <a href="mailto:prateek.roy13@gmail.com">prateek.roy13@gmail.com</a>.</p>
+  </div>
+</body>
+</html>`);
+});
+
 app.use("/api/itineraries/generate", generateLimiter);
 app.use("/api", apiLimiter);
 app.use("/api", router);
