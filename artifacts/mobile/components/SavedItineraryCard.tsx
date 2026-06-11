@@ -27,23 +27,25 @@ export function SavedItineraryCard({ itinerary, onPress, onDelete }: SavedItiner
   const data = itinerary.generatedData as any;
 
   return (
-    <TouchableOpacity
-      onPress={() => onPress(itinerary)}
-      activeOpacity={0.9}
-      style={styles.card}
-    >
+    <View style={styles.card}>
       <View style={styles.topRow}>
-        <View style={styles.locationIcon}>
-          <Feather name="map" size={18} color={Colors.light.primary} />
-        </View>
-        <View style={styles.meta}>
-          <Text style={styles.title} numberOfLines={1}>
-            {itinerary.title}
-          </Text>
-          <Text style={styles.location}>
-            {itinerary.city}, {itinerary.country}
-          </Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => onPress(itinerary)}
+          activeOpacity={0.9}
+          style={styles.topRowContent}
+        >
+          <View style={styles.locationIcon}>
+            <Feather name="map" size={18} color={Colors.light.primary} />
+          </View>
+          <View style={styles.meta}>
+            <Text style={styles.title} numberOfLines={1}>
+              {itinerary.title}
+            </Text>
+            <Text style={styles.location}>
+              {itinerary.city}, {itinerary.country}
+            </Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => onDelete(itinerary.id)}
           hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -53,37 +55,39 @@ export function SavedItineraryCard({ itinerary, onPress, onDelete }: SavedItiner
         </TouchableOpacity>
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Ionicons name="calendar-outline" size={13} color={Colors.light.textSecondary} />
-          <Text style={styles.statText}>{itinerary.days} days</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Feather name="sun" size={13} color={Colors.light.textSecondary} />
-          <Text style={styles.statText}>{itinerary.travelMonth}</Text>
-        </View>
-        {data?.seniorFriendlyScore && (
+      <TouchableOpacity onPress={() => onPress(itinerary)} activeOpacity={0.9} style={styles.cardBody}>
+        <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Feather name="star" size={13} color={Colors.light.accent} />
-            <Text style={styles.statText}>{data.seniorFriendlyScore}/10</Text>
+            <Ionicons name="calendar-outline" size={13} color={Colors.light.textSecondary} />
+            <Text style={styles.statText}>{itinerary.days} days</Text>
           </View>
-        )}
-      </View>
-
-      {data?.overview && (
-        <Text style={styles.overview} numberOfLines={2}>
-          {data.overview}
-        </Text>
-      )}
-
-      <View style={styles.footer}>
-        <Text style={styles.savedDate}>Saved {formatDate(itinerary.savedAt)}</Text>
-        <View style={styles.viewRow}>
-          <Text style={styles.viewText}>View itinerary</Text>
-          <Feather name="chevron-right" size={14} color={Colors.light.primary} />
+          <View style={styles.statItem}>
+            <Feather name="sun" size={13} color={Colors.light.textSecondary} />
+            <Text style={styles.statText}>{itinerary.travelMonth}</Text>
+          </View>
+          {data?.seniorFriendlyScore && (
+            <View style={styles.statItem}>
+              <Feather name="star" size={13} color={Colors.light.accent} />
+              <Text style={styles.statText}>{data.seniorFriendlyScore}/10</Text>
+            </View>
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
+
+        {data?.overview && (
+          <Text style={styles.overview} numberOfLines={2}>
+            {data.overview}
+          </Text>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.savedDate}>Saved {formatDate(itinerary.savedAt)}</Text>
+          <View style={styles.viewRow}>
+            <Text style={styles.viewText}>View itinerary</Text>
+            <Feather name="chevron-right" size={14} color={Colors.light.primary} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -113,6 +117,15 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+  },
+  topRowContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  cardBody: {
     gap: 10,
   },
   locationIcon: {
