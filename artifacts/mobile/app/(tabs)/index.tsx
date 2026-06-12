@@ -203,7 +203,7 @@ export default function ExploreScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.horizontalScroll}
                   >
-                    {destinations.map((dest: any) => (
+                    {destinations.slice(0, 6).map((dest: any) => (
                       <DestinationCard
                         key={dest.id}
                         destination={dest}
