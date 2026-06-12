@@ -26,10 +26,14 @@ setInterval(async () => {
 
 // Starts the Google OAuth flow. The Expo app opens this URL in a browser.
 // After sign-in, Google redirects to /api/auth/google-callback.
-// The app polls /api/auth/session/:id until the user data is ready,
-// then dismisses the browser — no exps:// deep links needed.
+//
+// If redirect_uri is provided (native apps pass their custom-scheme URI,
+// e.g. tuttle://auth-callback), the callback page redirects there once the
+// session is stored, which automatically dismisses the in-app browser.
+// If omitted (web flow), the callback page shows a "close this window"
+// message and the app polls /api/auth/session/:id instead.
 router.get("/auth/google-initiate", (req, res): void => {
-  const { session_id, client_id } = req.query as Record<string, string>;
+  const { session_id, client_id, redirect_uri } = req.query as Record<string, string>;
   if (!session_id || !client_id) {
     res.status(400).send("Missing required params: session_id and client_id");
     return;
@@ -47,7 +51,7 @@ router.get("/auth/google-initiate", (req, res): void => {
     })();
   const callbackUrl = `${callbackOrigin}/api/auth/google-callback`;
   const scope = "openid email profile";
-  const state = Buffer.from(JSON.stringify({ session_id })).toString("base64url");
+  const state = Buffer.from(JSON.stringify({ session_id, redirect_uri })).toString("base64url");
 
   const googleUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -61,8 +65,11 @@ router.get("/auth/google-initiate", (req, res): void => {
 });
 
 // Google redirects here after sign-in (token in URL hash, read by JavaScript).
-// Fetches user info, stores in sessionStore, shows "Signed in — return to app".
-// The native app polls /api/auth/session/:id and closes the browser when ready.
+// Fetches user info, stores in sessionStore.
+// If the original request included redirect_uri (native apps), redirects
+// there with ?session=<id> — this auto-dismisses the in-app browser and
+// hands control back to the app. Otherwise (web), shows a
+// "close this window" message and the app polls /api/auth/session/:id.
 router.get("/auth/google-callback", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html>
@@ -118,6 +125,7 @@ router.get("/auth/google-callback", (_req, res) => {
   catch(e){show('\u26a0\ufe0f','Sign-in failed','Invalid state. Please try again.',true);return;}
 
   var sessionId=parsed.session_id;
+  var appRedirect=parsed.redirect_uri;
 
   fetch('https://www.googleapis.com/userinfo/v2/me',{
     headers:{Authorization:'Bearer '+token}
@@ -133,12 +141,16 @@ router.get("/auth/google-callback", (_req, res) => {
   .then(function(r){return r.json();})
   .then(function(data){
     if(data.ok){
-      // Do NOT redirect to a custom scheme here.
-      // In Expo Go, the app's custom scheme (mobile://) is not registered by the OS
-      // so the redirect would leave the browser hanging with no app to handle it.
-      // Instead, the app polls /api/auth/session/:id every second and calls
-      // WebBrowser.dismissBrowser() once the session is found — no deep link needed.
-      show('\u2705','Signed in!','Please close this window to return to the app.',false);
+      if(appRedirect){
+        // Hand control back to the native app. expo-web-browser detects this
+        // redirect (matching the redirectUrl passed to openAuthSessionAsync)
+        // and automatically dismisses the in-app browser — no manual
+        // "close this window" step needed.
+        var sep=appRedirect.indexOf('?')>=0?'&':'?';
+        window.location.href=appRedirect+sep+'session='+encodeURIComponent(sessionId);
+      } else {
+        show('\u2705','Signed in!','Please close this window to return to the app.',false);
+      }
     } else {
       show('\u26a0\ufe0f','Sign-in failed','Could not save session. Please try again.',true);
     }

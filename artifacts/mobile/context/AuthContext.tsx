@@ -8,11 +8,13 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
 
-// No custom-scheme redirect is used for OAuth completion.
-// In Expo Go on Android, the app's custom scheme (mobile://) is NOT registered by
-// the OS — only exp:// is. Using mobile:// as a redirect causes the browser to
-// hang with no app to handle the intent.
-// Instead, the background poll detects the session and calls dismissBrowser().
+// Native OAuth completion uses the app's custom scheme (tuttle://) as the
+// redirect target. expo-web-browser's openAuthSessionAsync watches for a
+// redirect matching this scheme and automatically dismisses the in-app
+// browser/CCT — no "close this window" step needed.
+// NOTE: custom schemes are only registered in standalone/EAS builds, not
+// Expo Go, so this flow must be tested on a real build (dev client or
+// production APK), not Expo Go.
 
 export interface AuthUser {
   id: string;
@@ -178,50 +180,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Native (iOS/Android): post-close session fetch ───────────────────────────
+  // ── Native (iOS/Android): custom-scheme redirect ────────────────────────────
   //
   // Flow:
-  //  1. App generates a session_id and opens /api/auth/google-initiate in a CCT
+  //  1. App generates a session_id and opens /api/auth/google-initiate in a CCT,
+  //     passing redirect_uri=tuttle://auth-callback
   //  2. User signs in → Google redirects to /api/auth/google-callback
-  //  3. Callback page stores user data in PostgreSQL, shows "Signed in! Close window"
-  //     — NO custom-scheme redirect (mobile:// is unregistered in Expo Go on Android)
-  //  4. User closes the browser (or it auto-closes)
-  //  5. On Android, JS is SUSPENDED while CCT is open — polling is useless then.
-  //     Instead, we fetch the session immediately after openAuthSessionAsync returns,
-  //     since the data was stored in the DB during the browser session.
-  //  6. Retry a few times in case of a brief network delay.
+  //  3. Callback page stores user data in PostgreSQL, then redirects to
+  //     tuttle://auth-callback?session=<id>
+  //  4. openAuthSessionAsync detects the tuttle:// redirect and automatically
+  //     dismisses the CCT, resolving with { type: "success", url }
+  //  5. We fetch the session from PostgreSQL (one-time use) and log the user in.
   const signInWithGoogleNative = async () => {
     if (!googleClientId) throw new Error("Google Client ID not configured");
     setSigningIn(true);
 
     const sessionId = makeSessionId();
+    const redirectUri = "tuttle://auth-callback";
     const initiateUrl =
       `${API_BASE}/api/auth/google-initiate` +
       `?session_id=${encodeURIComponent(sessionId)}` +
-      `&client_id=${encodeURIComponent(googleClientId)}`;
+      `&client_id=${encodeURIComponent(googleClientId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-    // Open the Chrome Custom Tab. JS is suspended on Android while it is open.
-    // When this resolves (any reason: user closed it, sign-in done, etc.)
-    // the session should already be in the DB — we fetch it immediately below.
-    await WebBrowser.openAuthSessionAsync(initiateUrl);
+    const result = await WebBrowser.openAuthSessionAsync(initiateUrl, redirectUri);
 
-    // JS resumes here. Try fetching the session with retries (up to ~10 seconds).
-    // The session was stored in DB while the browser was open. One-time use: the
-    // first successful fetch deletes it.
+    // Fetch the session with a short retry loop in case of a brief delay
+    // between the redirect and the DB write completing.
     let resolvedUser: any = null;
-    for (let attempt = 0; attempt < 10 && !resolvedUser; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000));
-      try {
-        const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
-        if (r.ok) {
-          const data = await r.json();
-          if (data?.email) resolvedUser = data;
-        } else if (r.status === 404 && attempt === 0) {
-          // Session not found on first try — user may have closed before finishing.
-          // Still retry a few times in case of slight race.
+    if (result.type === "success") {
+      for (let attempt = 0; attempt < 5 && !resolvedUser; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
+        try {
+          const r = await fetch(`${API_BASE}/api/auth/session/${sessionId}`);
+          if (r.ok) {
+            const data = await r.json();
+            if (data?.email) resolvedUser = data;
+          }
+        } catch {
+          // Network hiccup — retry
         }
-      } catch {
-        // Network hiccup — retry
       }
     }
 
