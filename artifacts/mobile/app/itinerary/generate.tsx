@@ -17,8 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePreferences } from "@/context/PreferencesContext";
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 const MONTHS = [
   "January", "February", "March", "April",

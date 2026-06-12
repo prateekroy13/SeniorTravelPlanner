@@ -20,8 +20,7 @@ import { DestinationCard } from "@/components/DestinationCard";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 import { usePreferences } from "@/context/PreferencesContext";
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 async function fetchDestinations() {
   const res = await fetch(`${BASE_URL}/api/destinations`);

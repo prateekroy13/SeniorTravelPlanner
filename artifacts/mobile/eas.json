@@ -11,13 +11,17 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "106076213238-vhjvrumbg1skt8vnvqqkiphsi6jn5uej.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "106076213238-vhjvrumbg1skt8vnvqqkiphsi6jn5uej.apps.googleusercontent.com",
+        "EXPO_PUBLIC_DOMAIN": "senior-travel-planner.replit.app",
+        "EXPO_PUBLIC_AUTH_ORIGIN": "https://senior-travel-planner.replit.app"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "106076213238-vhjvrumbg1skt8vnvqqkiphsi6jn5uej.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "106076213238-vhjvrumbg1skt8vnvqqkiphsi6jn5uej.apps.googleusercontent.com",
+        "EXPO_PUBLIC_DOMAIN": "senior-travel-planner.replit.app",
+        "EXPO_PUBLIC_AUTH_ORIGIN": "https://senior-travel-planner.replit.app"
       }
     }
   },

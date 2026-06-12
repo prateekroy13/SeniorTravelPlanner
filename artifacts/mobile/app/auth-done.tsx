@@ -2,11 +2,10 @@ import React, { useEffect, useRef } from "react";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { AUTH_ORIGIN } from "@/constants/api";
 
 // Sessions are stored in the production DB (by the production OAuth callback).
 // Always poll the production server so dev and prod both find the session.
-const AUTH_ORIGIN =
-  process.env.EXPO_PUBLIC_AUTH_ORIGIN || "https://senior-travel-planner.replit.app";
 
 // This screen is navigated to when the Google OAuth callback redirects to
 // mobile://auth-done?session=SESSION_ID. Expo Router intercepts the mobile://

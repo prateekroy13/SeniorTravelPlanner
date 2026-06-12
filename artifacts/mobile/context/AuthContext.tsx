@@ -2,26 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
+import { API_BASE_URL as API_BASE, AUTH_ORIGIN } from "@/constants/api";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_KEY = "@seniortravel_auth";
-
-// EXPO_PUBLIC_DOMAIN is baked in at build time:
-//   dev  → REPLIT_DEV_DOMAIN  (janeway.replit.dev — valid HTTP server)
-//   prod → REPLIT_INTERNAL_APP_DOMAIN (senior-travel-planner.replit.app — valid HTTP server)
-// NOTE: seniortravel.replit.app is the Expo delivery domain and returns 404 for HTTP.
-const API_DOMAIN =
-  process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
-const API_BASE = `https://${API_DOMAIN}`;
-
-// For web OAuth, always use the production server.
-// The Google callback is registered only on the production domain, and the
-// session is stored in the production DB — so both the initiate request and
-// the session poll must go through the same server.
-// EXPO_PUBLIC_AUTH_ORIGIN defaults to the production domain.
-const AUTH_ORIGIN =
-  process.env.EXPO_PUBLIC_AUTH_ORIGIN || "https://senior-travel-planner.replit.app";
 
 // No custom-scheme redirect is used for OAuth completion.
 // In Expo Go on Android, the app's custom scheme (mobile://) is NOT registered by

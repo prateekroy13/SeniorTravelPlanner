@@ -20,8 +20,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useDeviceId } from "@/hooks/useDeviceId";
 import { useSparksPref } from "@/hooks/useSparksPref";
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 const KNOWN_CITIES = [
   "Lisbon", "Rome", "Kyoto", "Amsterdam", "Paris", "Venice",

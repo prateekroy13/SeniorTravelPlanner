@@ -16,8 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useDeviceId } from "@/hooks/useDeviceId";
 import { type Spark, authorColor, SparkCard } from "@/app/(tabs)/sparks";
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 export default function UserProfileScreen() {
   const insets = useSafeAreaInsets();

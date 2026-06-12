@@ -20,8 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useDeviceId } from "@/hooks/useDeviceId";
 import { usePreferences } from "@/context/PreferencesContext";
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 type LocationType = "spot" | "restaurant";
 

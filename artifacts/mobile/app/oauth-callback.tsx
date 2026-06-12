@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { API_DOMAIN } from "@/constants/api";
 
 export default function OAuthCallbackPage() {
   const [status, setStatus] = useState<"loading" | "redirecting" | "error">("loading");
@@ -23,10 +24,8 @@ export default function OAuthCallbackPage() {
       setStatus("redirecting");
       // Use EXPO_PUBLIC_DOMAIN so the exps:// host matches the running Expo server.
       // A mismatched host causes Android Expo Go to attempt loading a new app (crash).
-      const callbackDomain =
-        process.env.EXPO_PUBLIC_DOMAIN || "senior-travel-planner.replit.app";
       const appUrl =
-        `exps://${callbackDomain}/oauth-callback` +
+        `exps://${API_DOMAIN}/oauth-callback` +
         `?token=${encodeURIComponent(token)}`;
       window.location.href = appUrl;
     } else {

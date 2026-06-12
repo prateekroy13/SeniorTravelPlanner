@@ -25,16 +25,13 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
 const CARD_H = Math.min(SCREEN_H * 0.62, 520);
 const SWIPE_THRESHOLD = SCREEN_W * 0.28;
-
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "";
 
 interface Attraction {
   id: string;
