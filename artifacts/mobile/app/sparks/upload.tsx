@@ -19,7 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useDeviceId } from "@/hooks/useDeviceId";
-import { usePreferences } from "@/context/PreferencesContext";
+import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL as BASE_URL } from "@/constants/api";
 
 type LocationType = "spot" | "restaurant";
@@ -28,12 +28,12 @@ export default function UploadScreen() {
   const insets = useSafeAreaInsets();
   const deviceId = useDeviceId();
   const queryClient = useQueryClient();
-  const { preferences } = usePreferences();
+  const { user } = useAuth();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   const [image, setImage] = useState<string | null>(null);
-  const [authorName, setAuthorName] = useState(preferences.name || "");
+  const [authorName, setAuthorName] = useState(user?.name || "");
   const [caption, setCaption] = useState("");
   const [locationType, setLocationType] = useState<LocationType>("spot");
   const [locationName, setLocationName] = useState("");
