@@ -4,121 +4,74 @@
 
 ## 1. System Context
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          External World                              │
-│                                                                      │
-│   ┌─────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
-│   │ Google Play │    │ Google OAuth │    │  Google Maps API     │  │
-│   │    Store    │    │  (accounts.  │    │  · Places (photos)   │  │
-│   │ (distribute)│    │  google.com) │    │  · Distance Matrix   │  │
-│   └─────────────┘    └──────────────┘    └──────────────────────┘  │
-│                                                                      │
-│                       ┌──────────────┐                              │
-│                       │  OpenAI API  │                              │
-│                       │  (GPT model) │                              │
-│                       └──────────────┘                              │
-└──────────────────────────────────────────────────────────────────────┘
-           ▲                  ▲                   ▲
-           │                  │                   │
-    ┌──────┴──────────────────┴───────────────────┴────────┐
-    │              Tuttle API Server (Replit)               │
-    │         senior-travel-planner.replit.app              │
-    └──────────────────────────┬───────────────────────────┘
-                               │ HTTPS
-                    ┌──────────┴──────────┐
-                    │   Tuttle Android App │
-                    │    (EAS / Play)      │
-                    └─────────────────────┘
-                               │
-                    ┌──────────┴──────────┐
-                    │    End Users         │
-                    │  (Senior Travelers)  │
-                    └─────────────────────┘
+```mermaid
+flowchart TD
+    User["👴 Senior Traveler"]
+    App["📱 Tuttle Android App\nEAS Build · Google Play"]
+    API["⚙️ Express API\nsenior-travel-planner.replit.app"]
+    PG[("🗄️ PostgreSQL\nReplit managed")]
+    OpenAI["🤖 OpenAI API\nItinerary generation"]
+    Maps["🗺️ Google Maps API\nPhotos · Distance Matrix"]
+    OAuth["🔐 Google OAuth2\nSign-in"]
+    Play["📦 Google Play Store\nDistribution"]
+
+    User -->|uses| App
+    Play -->|distributes| App
+    App -->|HTTPS| API
+    API <-->|read · write| PG
+    API -->|chat completion| OpenAI
+    API -->|place photos · walking times| Maps
+    API -->|OAuth flow| OAuth
 ```
 
 ---
 
 ## 2. Mobile App Architecture
 
-### 2.1 Navigation Structure (Expo Router)
+### 2.1 Screen Navigation (Expo Router)
 
-```
-app/
-├── _layout.tsx                 Root layout — fonts, auth guard, stack navigator
-│
-├── login.tsx                   Google Sign-In / Guest mode entry
-├── onboarding.tsx              First-run preferences (pace, diet, budget, a11y)
-├── auth-done.tsx               Deep-link handler for OAuth completion (legacy)
-├── oauth-callback.tsx          Web-only OAuth hash handler (legacy)
-│
-└── (tabs)/                     Tab navigator (authenticated users)
-    ├── _layout.tsx             Tab bar: Home, Sparks, Saved, Profile
-    ├── index.tsx               Home — featured destinations + Top Picks
-    ├── sparks.tsx              Community photo feed + likes
-    ├── saved.tsx               Saved itineraries list
-    └── profile.tsx             User profile + preferences + sign out
-│
-├── swipe/[destinationId].tsx   Attraction swipe cards for a city
-├── food-swipe/[destinationId].tsx  Restaurant swipe cards for a city
-│
-├── itinerary/
-│   ├── generate.tsx            AI itinerary generation (preferences form)
-│   ├── [id].tsx                View saved itinerary — day list
-│   └── day/[dayId].tsx         Day detail — attraction schedule
-│
-└── sparks/
-    ├── upload.tsx              Photo upload form (location, caption, image)
-    └── user/[authorName].tsx   View all Sparks by one author
+```mermaid
+flowchart TD
+    Root["_layout.tsx\nRoot — fonts · auth guard · stack"]
+
+    Root --> Login["login.tsx\nGoogle Sign-In · Guest mode"]
+    Root --> Onboarding["onboarding.tsx\nFirst-run preferences"]
+    Root --> Tabs
+
+    subgraph Tabs["(tabs) — authenticated"]
+        Home["index.tsx\nFeatured destinations · Top Picks"]
+        Sparks["sparks.tsx\nCommunity photo feed"]
+        Saved["saved.tsx\nSaved itineraries list"]
+        Profile["profile.tsx\nUser profile · preferences"]
+    end
+
+    Home -->|tap city| SwipeAttr["swipe/destinationId\nAttraction swipe cards"]
+    Home -->|tap city| SwipeFood["food-swipe/destinationId\nRestaurant swipe cards"]
+    Home -->|generate| Generate["itinerary/generate.tsx\nAI generation form"]
+    Saved -->|tap trip| ItinView["itinerary/id\nDay list"]
+    ItinView -->|tap day| DayDetail["itinerary/day/dayId\nSchedule · attractions"]
+    Sparks -->|tap upload| Upload["sparks/upload.tsx\nPhoto upload form"]
+    Sparks -->|tap author| AuthorPage["sparks/user/authorName\nAll Sparks by author"]
 ```
 
 ### 2.2 State Management
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  React Contexts                     │
-│                                                     │
-│  AuthContext          PreferencesContext            │
-│  ─────────────────    ───────────────────────────  │
-│  · user (AuthUser)    · pace                        │
-│  · signingIn          · budget                      │
-│  · guestMode          · dietaryNeeds                │
-│  · signInWithGoogle   · accessibilityNeeds          │
-│  · signOut            · fontSize                    │
-│  · loginWithData      · hasCompletedOnboarding      │
-│                       Persisted: AsyncStorage       │
-│  Persisted:                                         │
-│  AsyncStorage         SavedItinerariesContext       │
-│                       ───────────────────────────  │
-│                       · itineraries[]               │
-│                       · saveItinerary()             │
-│                       · deleteItinerary()           │
-│                       Persisted: AsyncStorage       │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Contexts["React Contexts — persisted to AsyncStorage"]
+        Auth["AuthContext\n─────────────\nuser: AuthUser\nsigningIn: bool\nguestMode: bool\n─────────────\nsignInWithGoogle()\nsignOut()\nloginWithData()"]
+        Prefs["PreferencesContext\n─────────────\npace\nbudget\ndietaryNeeds\naccessibilityNeeds\nfontSize\nhasCompletedOnboarding\n─────────────\nupdatePreferences()"]
+        Saved2["SavedItinerariesContext\n─────────────\nitineraries[]\n─────────────\nsaveItinerary()\ndeleteItinerary()"]
+    end
 
-┌─────────────────────────────────────────────────────┐
-│              TanStack Query (Server State)          │
-│                                                     │
-│  queryKey: ["destinations"]    → GET /api/destinations
-│  queryKey: ["sparks"]          → GET /api/sparks
-│  queryKey: ["place-photo", q]  → GET /api/maps/place-photo
-└─────────────────────────────────────────────────────┘
-```
+    subgraph Query["TanStack Query — server state"]
+        Q1["destinations\nGET /api/destinations"]
+        Q2["sparks\nGET /api/sparks"]
+        Q3["place-photo\nGET /api/maps/place-photo"]
+    end
 
-### 2.3 Key Components
-
-```
-components/
-├── DestinationCard.tsx       City card with photo (Google Places), score badge
-├── SavedItineraryCard.tsx    Saved trip card — nav + delete (sibling touchables,
-│                             avoids nested-touchable RN New Arch bug)
-├── DayCard.tsx               Day summary card within itinerary view
-├── UserAvatar.tsx            Google profile photo or initials fallback
-├── ErrorBoundary.tsx         Catches render errors, shows fallback UI
-└── ui/
-    ├── PrimaryButton.tsx     Branded CTA button
-    ├── Badge.tsx             Score / category badge
-    └── ScoreRing.tsx         Circular score visualisation
+    Contexts --> Screens["Screens & Components"]
+    Query --> Screens
 ```
 
 ---
@@ -130,66 +83,43 @@ components/
 ```
 Express App
 │
-├── GET  /health                         Uptime check
-├── GET  /privacy                        Static HTML — privacy policy
-├── GET  /delete-account                 Static HTML — account deletion instructions
+├── GET  /health
+├── GET  /privacy                        Static HTML
+├── GET  /delete-account                 Static HTML
 │
 └── /api
-    ├── Destinations
-    │   ├── GET /destinations            All 15 curated cities (in-memory)
-    │   ├── GET /destinations/search     Filter by city/country/highlight text
-    │   ├── GET /destinations/:id/attractions   Curated + default attraction list
-    │   └── GET /destinations/:id/restaurants   Curated restaurant list
+    ├── GET  /destinations
+    ├── GET  /destinations/search
+    ├── GET  /destinations/:id/attractions
+    ├── GET  /destinations/:id/restaurants
     │
-    ├── Maps
-    │   └── GET /maps/place-photo        Google Places photo proxy (in-memory cache)
-    │                                    → no API key exposed to client
+    ├── GET  /maps/place-photo           Google Places proxy (in-memory cache)
     │
-    ├── Itineraries
-    │   ├── GET  /itineraries            List by userId query param
-    │   ├── POST /itineraries/generate   AI generation → save → return
-    │   ├── GET  /itineraries/:id        Single itinerary
-    │   └── DELETE /itineraries/:id      Delete by id
+    ├── GET    /itineraries
+    ├── POST   /itineraries/generate     OpenAI + Distance Matrix
+    ├── GET    /itineraries/:id
+    └── DELETE /itineraries/:id
     │
-    ├── Sparks
-    │   ├── GET  /sparks                 Feed (with liked_by_me per deviceId)
-    │   ├── POST /sparks                 Upload new Spark
-    │   ├── POST /sparks/:id/like        Toggle like (deviceId-based)
-    │   └── GET  /sparks/user/:author    All Sparks by author name
+    ├── GET  /sparks
+    ├── POST /sparks
+    ├── POST /sparks/:id/like
+    └── GET  /sparks/user/:author
     │
-    └── Auth
-        ├── GET  /auth/google-initiate   Redirect to Google OAuth consent
-        ├── GET  /auth/google-callback   Receive token, store session in DB
-        ├── POST /auth/store-session     Internal: store user data
-        └── GET  /auth/session/:id       One-time fetch → deletes on read
+    ├── GET  /auth/google-initiate
+    ├── GET  /auth/google-callback
+    ├── POST /auth/store-session
+    └── GET  /auth/session/:id
 ```
 
 ### 3.2 Middleware Stack
 
+```mermaid
+flowchart TD
+    Req["Incoming Request"] --> CORS["cors()\nAllow all origins"]
+    CORS --> JSON["express.json()\nParse body"]
+    JSON --> Router["Route modules\ndestinations · itineraries\nsparks · maps · auth"]
+    Router --> Res["Response"]
 ```
-Request
-  │
-  ▼
-cors()              Allow cross-origin from any origin (mobile app + web)
-  │
-  ▼
-express.json()      Parse JSON body
-  │
-  ▼
-Router.use()        Mount route modules
-  │
-  ▼
-Response
-```
-
-### 3.3 Destination Data Strategy
-
-Destination and attraction data is stored **in-memory as a TypeScript constant** (`DESTINATIONS`, `ATTRACTIONS` in `destinations.ts`) rather than in the database. This was a deliberate v1 choice:
-
-- **Pro:** Zero DB reads for the most common requests, instant response, no migration cost when editing content
-- **Pro:** Easily version-controlled — changing a city description is a code diff
-- **Con:** Requires a redeploy to update content; not editable without code changes
-- **Future:** Move to a CMS or DB table when the destination count grows beyond ~30 or when non-developers need to edit content
 
 ---
 
@@ -197,265 +127,217 @@ Destination and attraction data is stored **in-memory as a TypeScript constant**
 
 ### 4.1 Entity Relationship
 
+```mermaid
+erDiagram
+    ITINERARIES {
+        serial id PK
+        text user_id
+        text title
+        text city
+        text country
+        integer days
+        text travel_month
+        jsonb generated_data
+        jsonb preferences
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SPARKS {
+        serial id PK
+        text author_name
+        text image_data
+        text caption
+        text location_name
+        text location_type
+        text destination_city
+        text destination_country
+        integer likes_count
+        timestamp created_at
+    }
+
+    SPARK_LIKES {
+        integer spark_id FK
+        text device_id
+    }
+
+    AUTH_SESSIONS {
+        text session_id PK
+        jsonb user_data
+        timestamp created_at
+        timestamp expires_at
+    }
+
+    SPARKS ||--o{ SPARK_LIKES : "has likes"
 ```
-┌──────────────────┐         ┌────────────────────┐
-│   itineraries    │         │      sparks         │
-│──────────────────│         │────────────────────│
-│ id (PK)          │         │ id (PK)             │
-│ user_id          │         │ author_name         │
-│ title            │         │ image_data (base64) │
-│ city             │         │ caption             │
-│ country          │         │ location_name       │
-│ days             │         │ location_type       │
-│ travel_month     │         │ destination_city    │
-│ generated_data ──┼─JSONB   │ destination_country │
-│ preferences ─────┼─JSONB   │ likes_count         │
-│ created_at       │         │ created_at          │
-│ updated_at       │         └────────┬────────────┘
-└──────────────────┘                  │ 1:many
-                                      ▼
-                             ┌────────────────────┐
-                             │    spark_likes      │
-                             │────────────────────│
-                             │ spark_id (FK)       │
-                             │ device_id           │
-                             └────────────────────┘
 
-┌──────────────────┐
-│  auth_sessions   │   (ephemeral — TTL 5 min, one-time read)
-│──────────────────│
-│ session_id (PK)  │
-│ user_data ───────┼─JSONB   { id, name, email, picture }
-│ created_at       │
-│ expires_at       │
-└──────────────────┘
-```
+### 4.2 ORM Access Pattern
 
-### 4.2 ORM & Access Pattern
-
-- **Drizzle ORM** for typed queries on `itineraries`
-- **Raw `pg` pool queries** for `sparks`, `spark_likes`, `auth_sessions` (simpler queries, faster iteration)
-- Schema defined in `lib/db/src/schema/` — shared across server and any future services
+| Table | Access | Reason |
+|---|---|---|
+| `itineraries` | Drizzle ORM (typed queries) | Complex schema, type safety needed |
+| `sparks` + `spark_likes` | Raw `pg` pool | JOIN + conditional UPDATE, simpler as raw SQL |
+| `auth_sessions` | Raw `pg` pool | Simple key-value with TTL, no schema benefit |
 
 ---
 
-## 5. Authentication Flow (Detailed)
+## 5. Authentication Flow
 
-### 5.1 Google Sign-In — Native (Android)
+### 5.1 Native Android (Custom Scheme Redirect)
 
-```
-User taps "Sign in with Google"
-         │
-         ▼
-AuthContext.signInWithGoogleNative()
-  · generates random session_id
-  · sets redirectUri = "tuttle://auth-callback"
-  · constructs initiateUrl:
-    GET /api/auth/google-initiate
-        ?session_id=<id>
-        &client_id=<GOOGLE_CLIENT_ID>
-        &redirect_uri=tuttle://auth-callback
-         │
-         ▼
-WebBrowser.openAuthSessionAsync(initiateUrl, "tuttle://auth-callback")
-  · Opens Chrome Custom Tab (CCT)
-  · JS on Android is SUSPENDED while CCT is open
-         │
-         ▼
-[API] /auth/google-initiate
-  · encodes { session_id, redirect_uri } as base64url state
-  · redirects to accounts.google.com/o/oauth2/v2/auth
-         │
-         ▼
-[Google] User consents → redirects to /api/auth/google-callback#access_token=...
-         │
-         ▼
-[API] /auth/google-callback (HTML page with inline JS)
-  · reads access_token from URL hash
-  · fetches https://www.googleapis.com/userinfo/v2/me
-  · POSTs user data to /api/auth/store-session → stored in PostgreSQL
-  · redirects to tuttle://auth-callback?session=<id>
-         │
-         ▼
-[CCT] detects tuttle:// scheme → CCT auto-dismissed
-openAuthSessionAsync resolves with { type: "success" }
-         │
-         ▼
-[App] JS resumes
-  · fetches /api/auth/session/<id> (up to 5 retries, 500ms apart)
-  · session deleted from DB on first successful read (one-time use)
-  · saveUser() → stored in AsyncStorage
-  · user is now authenticated
+```mermaid
+sequenceDiagram
+    participant App as Android App
+    participant CCT as Chrome Custom Tab
+    participant API as API Server
+    participant Google as Google OAuth
+    participant DB as PostgreSQL
+
+    App->>CCT: openAuthSessionAsync(initiateUrl, "tuttle://auth-callback")
+    CCT->>API: GET /auth/google-initiate?session_id=X&redirect_uri=tuttle://auth-callback
+    API->>Google: Redirect → accounts.google.com/o/oauth2/v2/auth (state = base64url{session_id, redirect_uri})
+    Google-->>CCT: User consents → /auth/google-callback#access_token=...
+    CCT->>API: GET /auth/google-callback (HTML page + inline JS)
+    API->>Google: GET /userinfo/v2/me
+    Google-->>API: {id, name, email, picture}
+    API->>DB: INSERT auth_sessions (TTL 5 min)
+    API-->>CCT: Redirect → tuttle://auth-callback?session=X
+    Note over CCT,App: tuttle:// detected — CCT auto-dismissed
+    App->>API: GET /auth/session/X (up to 5 retries)
+    API->>DB: DELETE WHERE session_id = X RETURNING user_data
+    DB-->>API: user_data (one-time read)
+    API-->>App: User object
+    App->>App: saveUser() → AsyncStorage
 ```
 
-### 5.2 Google Sign-In — Web
+### 5.2 Web (Polling)
 
-```
-User taps "Sign in with Google"
-         │
-         ▼
-AuthContext.signInWithGoogleWeb()
-  · opens /api/auth/google-initiate in new browser tab (no redirect_uri)
-  · polls /api/auth/session/:id every 1 second (up to 120 seconds)
-  · when user completes sign-in in the new tab, callback stores session in DB
-  · poll finds session → saveUser()
-  · new tab closed automatically
+```mermaid
+sequenceDiagram
+    participant Web as Web Browser (Tab 1)
+    participant NewTab as New Tab
+    participant API as API Server
+    participant DB as PostgreSQL
+
+    Web->>NewTab: window.open(/auth/google-initiate)
+    Note over Web: Poll /auth/session/:id every 1s (max 120s)
+    NewTab->>API: OAuth flow (same as native, no redirect_uri)
+    API->>DB: INSERT auth_sessions
+    API-->>NewTab: Show "Signed in! Close this window"
+    Web->>API: GET /auth/session/:id (poll finds session)
+    API->>DB: DELETE session RETURNING user_data
+    DB-->>API: user_data
+    API-->>Web: User object
+    Web->>Web: saveUser() → AsyncStorage
 ```
 
 ### 5.3 Session Security Properties
 
 | Property | Implementation |
 |---|---|
-| Expiry | 5-minute TTL (`expires_at` column), cleaned up every 60 seconds |
-| One-time use | `DELETE ... RETURNING` — session consumed on first successful read |
-| CSRF protection | Random `session_id` in state param, matched client-side |
-| Key exposure | Google client ID is public (safe); no client secret on mobile client |
+| Expiry | 5-minute TTL, cleaned up every 60 seconds |
+| One-time use | `DELETE ... RETURNING` — consumed on first read |
+| CSRF protection | Random `session_id` in OAuth state param |
+| Key exposure | No client secret on mobile; Google client ID is safe to expose |
 
 ---
 
-## 6. AI Itinerary Generation Flow
+## 6. AI Itinerary Generation
 
-```
-User fills generate form (city, days, month, interests, pace, budget)
-         │
-         ▼
-POST /api/itineraries/generate
-  {
-    city, country, days, travelMonth,
-    preferences: { pace, budget, dietary, accessibility },
-    likedAttractions[],   ← from swipe session
-    likedRestaurants[]    ← from food-swipe session
-  }
-         │
-         ▼
-getRealTravelTimes()
-  · Google Distance Matrix API (walking mode)
-  · called for liked attractions pairs in sequence
-  · returns formatted "X → Y: N min walk" strings
-         │
-         ▼
-OpenAI Chat Completion
-  · System prompt: senior travel expert persona
-  · User prompt: city, preferences, liked places, real walking times
-  · Structured output: days[] → { title, theme, attractions[], meals[] }
-         │
-         ▼
-Drizzle INSERT into itineraries
-  · generated_data = full AI JSON response
-  · user_id = req.query.userId
-         │
-         ▼
-Response → app saves to SavedItinerariesContext + AsyncStorage
+```mermaid
+flowchart TD
+    Form["User fills generate form\ncity · days · month · preferences\nlikedAttractions · likedRestaurants"]
+    Form --> Post["POST /api/itineraries/generate"]
+    Post --> DM["getRealTravelTimes()\nGoogle Distance Matrix API\nwalking times between liked attractions"]
+    DM --> OAI["OpenAI Chat Completion\n· Senior travel expert persona\n· City + user preferences\n· Liked places\n· Real walking times injected into prompt"]
+    OAI --> Resp["Structured JSON response\ndays → attractions + meals per day"]
+    Resp --> Insert["Drizzle INSERT into itineraries\ngenerated_data stored as JSONB"]
+    Insert --> Client["Response to app\nSavedItinerariesContext + AsyncStorage"]
 ```
 
 ---
 
-## 7. Sparks (Community Feed) Flow
+## 7. Sparks Community Feed
 
-```
-Upload:                                     Feed:
-────────────────────────────────            ─────────────────────────────
-User picks photo (ImagePicker)              GET /api/sparks?deviceId=<id>
-  │                                           │
-  ▼                                           ▼
-POST /api/sparks                          PostgreSQL JOIN spark_likes
-  · image_data (base64)                     · liked_by_me = true/false
-  · authorName (from Google user.name)        per requesting device
-  · locationName, locationType
-  · destinationCity, destinationCountry      Rendered as infinite-scroll
-  │                                          card feed (TanStack Query)
-  ▼
-INSERT into sparks table
-  · likesCount defaults to 0
+```mermaid
+flowchart LR
+    subgraph Upload
+        U1["User picks photo\nImagePicker"] --> U2["POST /api/sparks\nauthor_name · image_data\nlocation · city · country"]
+        U2 --> U3["INSERT into sparks\nlikes_count = 0"]
+    end
 
-Like/Unlike:
-─────────────────────────
-POST /api/sparks/:id/like
-  { deviceId }
-  · INSERT or DELETE spark_likes row
-  · UPDATE sparks.likes_count ±1
-  · returns { liked: bool, likesCount: int }
+    subgraph Feed
+        F1["GET /api/sparks?deviceId=X"] --> F2["SELECT sparks\nLEFT JOIN spark_likes\nliked_by_me per device"]
+        F2 --> F3["TanStack Query\ninfinite scroll card feed"]
+    end
+
+    subgraph Like
+        L1["Tap like button"] --> L2["POST /api/sparks/:id/like\n{deviceId}"]
+        L2 --> L3["INSERT or DELETE spark_likes\nUPDATE likes_count ±1"]
+        L3 --> L4["Return {liked, likesCount}"]
+    end
 ```
 
 ---
 
 ## 8. Infrastructure & Deployment
 
-### 8.1 Hosting
+### 8.1 Hosting Overview
 
-```
-┌──────────────────────────────────────────┐
-│              Replit (always-on)          │
-│                                          │
-│  artifact: api-server                    │
-│  domain:   senior-travel-planner         │
-│            .replit.app                   │
-│                                          │
-│  Runtime: Node.js                        │
-│  Entry:   src/index.ts → tsx             │
-│  DB:      PostgreSQL (Replit managed)    │
-│  Secrets: Replit Secrets panel           │
-│                                          │
-│  Paths exposed:                          │
-│   /api  /privacy  /delete-account        │
-└──────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Replit["☁️ Replit — always-on"]
+        API2["Express API\nNode.js · TypeScript"]
+        PG2[("PostgreSQL")]
+        Secrets["Secrets\nDATABASE_URL\nOPENAI_API_KEY\nGOOGLE_MAPS_API_KEY\nGOOGLE_CALLBACK_ORIGIN"]
+        API2 <--> PG2
+        API2 --- Secrets
+    end
 
-┌──────────────────────────────────────────┐
-│           EAS Build (Expo)               │
-│                                          │
-│  Profile: production                     │
-│  Platform: Android                       │
-│  Output: .aab (Google Play AAB)          │
-│  versionCode: auto-increment (remote)    │
-│  Env vars baked in at build time:        │
-│   EXPO_PUBLIC_DOMAIN                     │
-│   EXPO_PUBLIC_AUTH_ORIGIN                │
-│   EXPO_PUBLIC_GOOGLE_CLIENT_ID           │
-└──────────────────────────────────────────┘
+    subgraph EAS["⚙️ EAS Build"]
+        Profile["production profile\nautoIncrement: true\nEnv vars baked in at build time"]
+        AAB["Android .aab\nversionCode N"]
+        Profile --> AAB
+    end
 
-┌──────────────────────────────────────────┐
-│          Google Play Console             │
-│                                          │
-│  Track: Closed testing                   │
-│  Current: v1.0.0 (build 4)              │
-│  Path to production: closed → open       │
-│                       → production       │
-└──────────────────────────────────────────┘
+    subgraph Play["📱 Google Play Console"]
+        Closed2["Closed Testing\nv1.0.0 build 4"]
+        Open["Open Testing"]
+        Prod2["Production"]
+        Closed2 --> Open --> Prod2
+    end
+
+    GH["GitHub\nmaster branch"] -->|auto-deploy| Replit
+    GH -->|eas build| EAS
+    EAS -->|upload .aab| Play
 ```
 
-### 8.2 Monorepo Layout
+### 8.2 Build & Release Pipeline
+
+```mermaid
+flowchart TD
+    Push["git push to GitHub master"]
+    Push --> A["Replit auto-redeploys\napi-server"]
+    Push --> B["Developer runs\neas build --platform android\n--profile production"]
+    A --> Live["API live at\nsenior-travel-planner.replit.app"]
+    B --> Build2["EAS cloud build\n~13 minutes"]
+    Build2 --> DL["Download .aab\nfrom EAS dashboard"]
+    DL --> Upload2["Play Console\nClosed testing → Create new release\nUpload .aab"]
+    Upload2 --> Rollout["Start rollout to testers"]
+```
+
+### 8.3 Monorepo Structure
 
 ```
-pnpm-workspace.yaml defines workspaces:
-  · artifacts/mobile         (Expo app)
-  · artifacts/api-server     (Express API)
-  · lib/db                   (@workspace/db)
-  · lib/integrations*        (@workspace/integrations-openai-*)
-  · lib/api-*                (@workspace/api-spec, api-client-react, api-zod)
-  · scripts/
-
-Shared packages are resolved as local pnpm workspace packages
-(no npm publish needed).
-```
-
-### 8.3 Build Pipeline
-
-```
-Code push to GitHub (master)
-         │
-         ├──▶ Replit auto-deploys api-server (on push / manual trigger)
-         │
-         └──▶ Developer manually runs:
-              eas build --platform android --profile production
-                │
-                ▼
-              EAS cloud build (~13 min)
-                │
-                ▼
-              Download .aab → upload to Play Console
-                │
-                ▼
-              Play Console review + rollout to closed testing
+pnpm-workspace.yaml
+│
+├── artifacts/mobile          @tuttle/mobile
+├── artifacts/api-server      @tuttle/api-server
+├── lib/db                    @workspace/db
+├── lib/integrations-*        @workspace/integrations-openai-*
+├── lib/api-spec              @workspace/api-spec
+├── lib/api-client-react      @workspace/api-client-react
+└── lib/api-zod               @workspace/api-zod
 ```
 
 ---
@@ -464,29 +346,46 @@ Code push to GitHub (master)
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Auth method | Server-side OAuth + session DB | Avoids native Google SDK setup on Android; works across platforms; no client secret needed |
-| OAuth browser dismissal | `tuttle://` custom scheme redirect + `openAuthSessionAsync` | Auto-dismisses CCT without user manually closing; requires standalone build (not Expo Go) |
-| Destination data storage | In-memory TypeScript constant | Fast, version-controlled, no DB overhead for v1 content that rarely changes |
-| ORM | Drizzle (typed) for structured tables, raw `pg` for simpler queries | Type safety where it matters most (itinerary schema); brevity for ad-hoc queries |
-| State management | React Context + AsyncStorage (not Redux/Zustand) | Sufficient complexity for v1; avoids boilerplate; contexts map 1:1 to domain areas |
-| Image storage | base64 in PostgreSQL text column | Simplest path for v1; no separate object storage to manage; limit on image size needed at scale |
-| Delete button isolation | Sibling `TouchableOpacity` elements | Avoids nested touchable gesture-responder bug in React Native New Architecture |
-| Build env vars | `EXPO_PUBLIC_*` baked in at EAS build time | Only method that works for native builds; not configurable at runtime |
+| Auth method | Server-side OAuth + session DB | No client secret on device; works across Android + web; no native SDK setup |
+| OAuth browser dismissal | `tuttle://` custom scheme + `openAuthSessionAsync` | Auto-dismisses CCT; no "close this window" UX needed |
+| Destination data | In-memory TypeScript constant | Fast (no DB read), version-controlled; acceptable for v1 with ≤30 cities |
+| ORM | Drizzle (structured) + raw `pg` (ad-hoc) | Type safety where schema is complex; brevity for simple queries |
+| State management | React Context + AsyncStorage | Sufficient for v1; avoids Redux boilerplate; contexts map 1:1 to domain |
+| Image storage | base64 in PostgreSQL text column | Simplest path for v1; no object storage to manage |
+| Delete button | Sibling `TouchableOpacity` elements | Avoids nested-touchable gesture bug in React Native New Architecture |
+| Build env vars | `EXPO_PUBLIC_*` baked in at EAS build | Only method available for native builds; not runtime-configurable |
 
 ---
 
-## 10. Known Limitations & Future Considerations
+## 10. Known Limitations & Future Roadmap
 
-| Area | Current State | Future Path |
-|---|---|---|
-| **Destination content** | Hardcoded in TypeScript, 15 cities | CMS / database table, admin UI for content editors |
-| **Image storage** | base64 in PostgreSQL | Cloud storage (S3 / GCS), URL references in DB |
-| **Auth** | Google only | Add Apple Sign-In (required for iOS App Store) |
-| **iOS** | Android only | EAS build for iOS (`--platform ios`), Apple developer account |
-| **Push notifications** | None | Expo Notifications (EAS) for trip reminders, new Sparks |
-| **Offline** | None | Cache destinations + saved itineraries with React Query `persistQueryClient` |
-| **API security** | Open endpoints (no auth middleware) | JWT/session middleware on user-specific routes (itineraries by userId) |
-| **Search** | In-memory text filter | Full-text search (PostgreSQL `tsvector`) when destination count grows |
-| **Sparks moderation** | None | Content moderation pipeline (Google Vision API safe-search) |
-| **Analytics** | None | Posthog / Amplitude for user journey and feature usage |
-| **Booking integration** | None | Affiliate links (GetYourGuide, Viator, Booking.com) as revenue path |
+```mermaid
+flowchart LR
+    subgraph Now["v1 — Current"]
+        N1["Android only"]
+        N2["15 hardcoded destinations"]
+        N3["Google Sign-In only"]
+        N4["base64 image storage"]
+        N5["Open API endpoints"]
+        N6["No push notifications"]
+        N7["No offline support"]
+    end
+
+    subgraph Next["v2 — Near Term"]
+        V1["iOS build\nApple Sign-In"]
+        V2["CMS for destinations\nadmin UI"]
+        V3["Cloud image storage\nS3 / GCS"]
+        V4["API auth middleware\nJWT on user routes"]
+        V5["Push notifications\nEAS Notifications"]
+    end
+
+    subgraph Future["v3 — Growth"]
+        F1["Booking integrations\nGetYourGuide · Viator affiliate"]
+        F2["Full-text search\nPostgreSQL tsvector"]
+        F3["Content moderation\nGoogle Vision safe-search"]
+        F4["Analytics\nPostHog · Amplitude"]
+        F5["Offline mode\nReact Query persistQueryClient"]
+    end
+
+    Now --> Next --> Future
+```
