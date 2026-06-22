@@ -1,0 +1,148 @@
+{
+  "day1": {
+    "activities": [
+      {
+        "name": "Colosseum",
+        "description": "Start the day with a visit to the iconic Colosseum. Light crowds and cool weather make mornings ideal.",
+        "bestTime": "08:30",
+        "crowdLevel": "medium",
+        "stepCount": 3000,
+        "nearbyDining": [
+          {
+            "name": "Ristorante Aroma",
+            "cuisine": "Italian",
+            "walkMinutes": 8
+          },
+          {
+            "name": "Pizzeria Luzzi",
+            "cuisine": "Italian",
+            "walkMinutes": 6
+          }
+        ]
+      },
+      {
+        "name": "Lunch at Da Enzo al 29",
+        "description": "Enjoy authentic Roman cuisine with a gluten-free menu. A favorite, located in the charming Trastevere area.",
+        "stepCount": 800,
+        "openingHours": "12:00–15:00, 19:00–23:00",
+        "reservationRequired": true,
+        "bookingAdvice": "Book 3 days ahead by calling +39 06 581 2260.",
+        "nearbyAttraction": "Trastevere"
+      },
+      {
+        "name": "Trastevere",
+        "description": "Explore the quaint streets of Trastevere, known for its vibrant atmosphere and historical charm.",
+        "bestTime": "14:30",
+        "crowdLevel": "medium",
+        "stepCount": 1000,
+        "nearbyDining": [
+          {
+            "name": "Antica Pesa",
+            "cuisine": "Italian",
+            "walkMinutes": 7
+          },
+          {
+            "name": "Tonnarello",
+            "cuisine": "Roman",
+            "walkMinutes": 5
+          }
+        ]
+      }
+    ],
+    "restStops": [
+      {
+        "name": "Caffè Greco",
+        "description": "Historic cafe in Rome with elegant interiors.",
+        "walkMinutes": 10
+      },
+      {
+        "name": "Villa Borghese Gardens",
+        "description": "A large, beautiful park perfect for a restful break.",
+        "walkMinutes": 0
+      }
+    ],
+    "transport": {
+      "options": [
+        {
+          "type": "bus",
+          "details": "Use bus 75 from Colosseum to Trastevere. Accessible with low floors.",
+          "cost": "€1.50"
+        }
+      ]
+    },
+    "budgetEstimate": "€50 per person per day, excluding meals"
+  },
+  "day2": {
+    "activities": [
+      {
+        "name": "Pantheon",
+        "description": "Visit the awe-inspiring Pantheon early to avoid crowds and enjoy the morning light.",
+        "bestTime": "09:00",
+        "crowdLevel": "medium",
+        "stepCount": 1000,
+        "nearbyDining": [
+          {
+            "name": "Armando al Pantheon",
+            "cuisine": "Roman",
+            "walkMinutes": 2
+          },
+          {
+            "name": "Ristorante Maccheroni",
+            "cuisine": "Italian",
+            "walkMinutes": 5
+          }
+        ]
+      },
+      {
+        "name": "Lunch at Pizzarium",
+        "description": "Famous for its gluten-free pizza options, this place is a must-try for food enthusiasts.",
+        "stepCount": 500,
+        "openingHours": "12:00–15:00, 18:30–22:00",
+        "reservationRequired": false,
+        "bookingAdvice": "",
+        "nearbyAttraction": "Vatican City"
+      },
+      {
+        "name": "Vatican Museums",
+        "description": "Spend the afternoon exploring the vast collection of art and history at the Vatican Museums.",
+        "bestTime": "13:00",
+        "crowdLevel": "high",
+        "stepCount": 2500,
+        "nearbyDining": [
+          {
+            "name": "La Veranda",
+            "cuisine": "Italian",
+            "walkMinutes": 9
+          },
+          {
+            "name": "Ristorante dei Musei",
+            "cuisine": "Mediterranean",
+            "walkMinutes": 6
+          }
+        ]
+      }
+    ],
+    "restStops": [
+      {
+        "name": "Giardini del Quirinale",
+        "description": "A serene garden perfect for a mid-morning rest.",
+        "walkMinutes": 0
+      },
+      {
+        "name": "Campo de' Fiori",
+        "description": "A lively market square ideal for an afternoon break.",
+        "walkMinutes": 8
+      }
+    ],
+    "transport": {
+      "options": [
+        {
+          "type": "metro",
+          "details": "Take Metro A from Pantheon to Vatican City. Stations have elevator access.",
+          "cost": "€1.50"
+        }
+      ]
+    },
+    "budgetEstimate": "€60 per person per day, excluding meals"
+  }
+}

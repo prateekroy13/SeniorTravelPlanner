@@ -131,7 +131,7 @@ async function callOpenAI(systemPrompt: string, label: string): Promise<any> {
   console.log(`\n⏳  Calling OpenAI [${label}] ...`);
   const start = Date.now();
 
-  const response = await fetch(`${BASE_URL}/v1/chat/completions`, {
+  const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -166,34 +166,49 @@ async function callOpenAI(systemPrompt: string, label: string): Promise<any> {
 // ─── Comparison analysis ──────────────────────────────────────────────────────
 
 function analyseResult(label: string, itinerary: any) {
-  const days: any[] = itinerary.dayPlans ?? [];
+  // Support both the current schema (top-level "itinerary" array, one combined
+  // "activities" array per day) and the older assumed schema (dayPlans +
+  // separate restaurants + morning/afternoon/evening).
+  const days: any[] = itinerary.itinerary ?? itinerary.dayPlans ?? itinerary.days ?? [];
 
-  const allRestaurants = days.flatMap((d: any) => d.restaurants ?? []);
   const allActivities = days.flatMap((d: any) => [
+    ...(d.activities ?? []),
     ...(d.morning ?? []),
     ...(d.afternoon ?? []),
     ...(d.evening ?? []),
   ]);
 
-  const hasReservationField = allRestaurants.some(
-    (r: any) => "reservationRequired" in r
+  // Restaurants are activity items carrying dining-specific fields, plus any
+  // explicit restaurants array (older schema).
+  const allRestaurants = [
+    ...days.flatMap((d: any) => d.restaurants ?? []),
+    ...allActivities.filter(
+      (a: any) =>
+        "reservationRequired" in a ||
+        a.bookingAdvice !== undefined ||
+        a.nearbyAttraction !== undefined
+    ),
+  ];
+
+  const hasReservationField = allActivities.some(
+    (a: any) => "reservationRequired" in a
   );
-  const hasBookingAdvice = allRestaurants.some(
-    (r: any) => r.bookingAdvice !== undefined
+  const hasBookingAdvice = allActivities.some(
+    (a: any) => a.bookingAdvice !== undefined
   );
-  const hasOpeningHours = allRestaurants.some(
-    (r: any) => r.openingHours !== undefined
+  const hasOpeningHours = allActivities.some(
+    (a: any) => a.openingHours !== undefined
   );
   const hasNearbyDining = allActivities.some(
     (a: any) => Array.isArray(a.nearbyDining) && a.nearbyDining.length > 0
   );
-  const hasNearbyAttractionHighlight = allRestaurants.some(
-    (r: any) => r.nearbyAttraction && r.nearbyAttraction.trim() !== ""
+  const hasNearbyAttractionHighlight = allActivities.some(
+    (a: any) => a.nearbyAttraction && String(a.nearbyAttraction).trim() !== ""
   );
 
   const likedRestsIncluded = TEST_PAYLOAD.likedRestaurants.filter((lr) =>
-    allRestaurants.some((r: any) =>
-      r.name?.toLowerCase().includes(lr.toLowerCase())
+    allActivities.some((a: any) =>
+      a.name?.toLowerCase().includes(lr.toLowerCase())
     )
   );
 
@@ -233,7 +248,7 @@ function analyseResult(label: string, itinerary: any) {
   );
 
   // Print a sample day-1 restaurant for manual review
-  const sampleRest = days[0]?.restaurants?.[0];
+  const sampleRest = allRestaurants[0];
   if (sampleRest) {
     console.log(`\n  Sample restaurant (Day 1, slot 0):`);
     console.log(`    Name:                ${sampleRest.name}`);
