@@ -5,18 +5,18 @@
       "activities": [
         {
           "name": "Colosseum",
-          "description": "Explore the iconic ancient amphitheater with its vast history. Guided tours are available for easier access.",
-          "openingHours": "08:30–17:00",
-          "bestTimeToVisit": "09:00",
+          "description": "Explore this iconic ancient amphitheater. Opt for guided tours with elevator access to avoid stairs.",
+          "openingHours": "08:30–16:30",
+          "bestTimeToVisit": "08:30",
           "crowdLevel": "medium",
           "nearbyDining": [
             {
-              "name": "La Taverna dei Fori Imperiali",
-              "cuisine": "Italian",
-              "walkMinutes": 7
+              "name": "Pizzarium",
+              "cuisine": "Pizza",
+              "walkMinutes": 10
             },
             {
-              "name": "Trattoria Luzzi",
+              "name": "Ristoro della Salute",
               "cuisine": "Italian",
               "walkMinutes": 8
             }
@@ -24,42 +24,37 @@
         },
         {
           "name": "Roman Forum",
-          "description": "Stroll through the ruins of ancient Rome's political heart. Smooth paths and gentle slopes are present.",
-          "openingHours": "08:30–18:00",
+          "description": "Stroll through the ruins of Rome's ancient center. Accessible paths available. Rest at cafes nearby.",
+          "openingHours": "08:30–16:30",
           "bestTimeToVisit": "10:00",
           "crowdLevel": "medium",
           "nearbyDining": [
             {
-              "name": "Ristorante Aroma at Palazzo Manfredi",
+              "name": "Osteria Margherita",
               "cuisine": "Italian",
-              "walkMinutes": 8
-            },
-            {
-              "name": "Angelino ai Fori Dal 1947",
-              "cuisine": "Italian",
-              "walkMinutes": 9
+              "walkMinutes": 10
             }
           ]
         }
       ],
       "restaurants": [
         {
-          "name": "Da Enzo al 29",
-          "cuisine": "Italian",
+          "name": "Pizzarium",
+          "cuisine": "Pizza",
           "mealType": "lunch",
-          "openingHours": "12:30–15:00, 19:00–23:00, closed Mondays",
-          "reservationRequired": true,
-          "bookingAdvice": "Book 1 week ahead via website or call +39 06 581 2260.",
-          "nearbyAttraction": "Trastevere"
-        },
-        {
-          "name": "Trattoria Luzzi",
-          "cuisine": "Italian",
-          "mealType": "dinner",
-          "openingHours": "12:00–23:00",
+          "openingHours": "11:30–15:00, 18:30–22:30",
           "reservationRequired": false,
           "bookingAdvice": "",
           "nearbyAttraction": "Colosseum"
+        },
+        {
+          "name": "Da Enzo al 29",
+          "cuisine": "Roman",
+          "mealType": "dinner",
+          "openingHours": "12:00–15:00, 19:00–22:30",
+          "reservationRequired": true,
+          "bookingAdvice": "Book 2 weeks ahead via phone +39 06 5835 7028",
+          "nearbyAttraction": "Trastevere"
         }
       ]
     },
@@ -68,60 +63,55 @@
       "activities": [
         {
           "name": "Pantheon",
-          "description": "Visit this ancient temple with its famous dome, boasting free entry and a smooth interior.",
+          "description": "Admire this well-preserved Roman temple. Accessible entry available.",
           "openingHours": "09:00–19:00",
-          "bestTimeToVisit": "11:00",
-          "crowdLevel": "medium",
+          "bestTimeToVisit": "09:00",
+          "crowdLevel": "low",
           "nearbyDining": [
             {
               "name": "Armando al Pantheon",
               "cuisine": "Italian",
-              "walkMinutes": 2
-            },
-            {
-              "name": "Ristorante Il Gabriello",
-              "cuisine": "Italian",
-              "walkMinutes": 10
+              "walkMinutes": 5
             }
           ]
         },
         {
           "name": "Trastevere",
-          "description": "Wander the charming streets of the Trastevere district with its historic charm and vibrant atmosphere.",
-          "openingHours": "All day",
-          "bestTimeToVisit": "17:00",
-          "crowdLevel": "low",
+          "description": "Wander the charming streets of this historic neighborhood. Plenty of cafes for a break.",
+          "openingHours": "Open area",
+          "bestTimeToVisit": "16:00",
+          "crowdLevel": "medium",
           "nearbyDining": [
             {
-              "name": "Grazia & Graziella",
-              "cuisine": "Italian",
+              "name": "Da Enzo al 29",
+              "cuisine": "Roman",
               "walkMinutes": 5
             },
             {
-              "name": "Il Duca",
-              "cuisine": "Italian",
-              "walkMinutes": 9
+              "name": "Bar San Calisto",
+              "cuisine": "Cafe",
+              "walkMinutes": 4
             }
           ]
         }
       ],
       "restaurants": [
         {
-          "name": "Pizzarium",
+          "name": "Armando al Pantheon",
           "cuisine": "Italian",
           "mealType": "lunch",
-          "openingHours": "11:00–22:00",
-          "reservationRequired": false,
-          "bookingAdvice": "",
-          "nearbyAttraction": "Vatican Gardens"
+          "openingHours": "12:30–15:00, 19:00–23:00",
+          "reservationRequired": true,
+          "bookingAdvice": "Reserve a week in advance via +39 06 6880 3034",
+          "nearbyAttraction": "Pantheon"
         },
         {
           "name": "Da Enzo al 29",
-          "cuisine": "Italian",
+          "cuisine": "Roman",
           "mealType": "dinner",
-          "openingHours": "12:30–15:00, 19:00–23:00, closed Mondays",
+          "openingHours": "12:00–15:00, 19:00–22:30",
           "reservationRequired": true,
-          "bookingAdvice": "Book 1 week ahead via website or call +39 06 581 2260.",
+          "bookingAdvice": "Book 2 weeks ahead via phone +39 06 5835 7028",
           "nearbyAttraction": "Trastevere"
         }
       ]

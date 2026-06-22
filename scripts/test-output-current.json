@@ -5,20 +5,68 @@
       "activities": [
         {
           "name": "Colosseum",
-          "description": "Explore the ancient amphitheater of Rome. Accessible entrance available through main entrance.",
-          "openingHours": "09:00-19:00",
-          "bestTimeToVisit": "09:00",
+          "description": "Discover the grandeur of ancient Rome with a guided tour of the Colosseum, adapted for easy access.",
+          "openingHours": "08:30-16:30",
+          "bestTimeToVisit": "09:00 AM",
           "crowdLevel": "medium",
           "nearbyDining": [
             {
-              "name": "Trattoria Luzzi",
+              "name": "Da Enzo al 29",
+              "cuisine": "Italian",
+              "walkMinutes": 20
+            }
+          ]
+        }
+      ],
+      "restaurants": [
+        {
+          "name": "Da Enzo al 29",
+          "cuisine": "Italian",
+          "mealType": "lunch",
+          "openingHours": "12:00-15:00",
+          "reservationRequired": true,
+          "bookingAdvice": "Book a few days in advance.",
+          "nearbyAttraction": "Colosseum"
+        },
+        {
+          "name": "Il Margutta RistorArte",
+          "cuisine": "Vegetarian",
+          "mealType": "dinner",
+          "openingHours": "18:30-23:30",
+          "reservationRequired": false,
+          "bookingAdvice": "Arrive early for gluten-free options.",
+          "nearbyAttraction": "Villa Borghese"
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "activities": [
+        {
+          "name": "Pantheon",
+          "description": "Explore this remarkable ancient temple, located in a bustling square, easily accessible with flat surfaces.",
+          "openingHours": "09:00-19:00",
+          "bestTimeToVisit": "10:00 AM",
+          "crowdLevel": "medium",
+          "nearbyDining": [
+            {
+              "name": "Armando al Pantheon",
+              "cuisine": "Italian",
+              "walkMinutes": 5
+            }
+          ]
+        },
+        {
+          "name": "Trastevere",
+          "description": "Wander the charming streets of Trastevere, known for its historic buildings and vibrant culture.",
+          "openingHours": "Always Open",
+          "bestTimeToVisit": "4:00 PM",
+          "crowdLevel": "low",
+          "nearbyDining": [
+            {
+              "name": "Checco er Carrettiere",
               "cuisine": "Italian",
               "walkMinutes": 10
-            },
-            {
-              "name": "Angelino ai Fori",
-              "cuisine": "Italian",
-              "walkMinutes": 12
             }
           ]
         }
@@ -28,73 +76,19 @@
           "name": "Pizzarium",
           "cuisine": "Pizza",
           "mealType": "lunch",
-          "openingHours": "11:00-16:00",
+          "openingHours": "11:00-15:00",
           "reservationRequired": false,
-          "bookingAdvice": "Arrive early to avoid lines; limited gluten-free options available.",
-          "nearbyAttraction": "Colosseum"
+          "bookingAdvice": "Arrive early for seating.",
+          "nearbyAttraction": "Vatican Museums"
         },
         {
-          "name": "Da Enzo al 29",
-          "cuisine": "Italian",
+          "name": "Osteria Der Belli",
+          "cuisine": "Seafood",
           "mealType": "dinner",
-          "openingHours": "12:30-15:00, 19:00-23:00",
+          "openingHours": "19:00-23:00",
           "reservationRequired": true,
-          "bookingAdvice": "Book a table well in advance and inform about gluten-free options.",
+          "bookingAdvice": "Make a reservation for dinner.",
           "nearbyAttraction": "Trastevere"
-        }
-      ]
-    },
-    {
-      "day": 2,
-      "activities": [
-        {
-          "name": "Pantheon",
-          "description": "Visit the well-preserved ancient Roman temple with easy access entrance.",
-          "openingHours": "09:00-19:00",
-          "bestTimeToVisit": "09:00",
-          "crowdLevel": "low",
-          "nearbyDining": [
-            {
-              "name": "Antica Salumeria",
-              "cuisine": "Italian",
-              "walkMinutes": 5
-            },
-            {
-              "name": "Caffè Tazza d'Oro",
-              "cuisine": "Coffee",
-              "walkMinutes": 2
-            }
-          ]
-        },
-        {
-          "name": "Trastevere",
-          "description": "Enjoy a leisurely walk through this charming historic neighborhood. Mostly flat pathways.",
-          "openingHours": "All day",
-          "bestTimeToVisit": "15:00",
-          "crowdLevel": "medium",
-          "nearbyDining": [
-            {
-              "name": "Carlo Menta",
-              "cuisine": "Italian",
-              "walkMinutes": 8
-            },
-            {
-              "name": "Ombre Rosse",
-              "cuisine": "Italian",
-              "walkMinutes": 5
-            }
-          ]
-        }
-      ],
-      "restaurants": [
-        {
-          "name": "Osteria da Fortunata",
-          "cuisine": "Italian",
-          "mealType": "lunch",
-          "openingHours": "12:00-23:00",
-          "reservationRequired": false,
-          "bookingAdvice": "Good gluten-free options available, arrive early for lunch to avoid rush.",
-          "nearbyAttraction": "Pantheon"
         }
       ]
     }

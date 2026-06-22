@@ -361,6 +361,55 @@ function analyseResult(label: string, itinerary: any) {
       );
     });
   }
+
+  return {
+    "Days planned": `${days.length}`,
+    "Total restaurants": `${allRestaurants.length}`,
+    "Total activities": `${allActivities.length}`,
+    "Liked attractions covered": `${likedAttrsIncluded.length}/${TEST_PAYLOAD.likedAttractions.length}`,
+    "Liked restaurants covered": `${likedRestsIncluded.length}/${TEST_PAYLOAD.likedRestaurants.length}`,
+    "Restaurant openingHours": `${restWithOpeningHours.length}/${allRestaurants.length} (${pct(restWithOpeningHours.length, allRestaurants.length)})`,
+    "bookingAdvice populated": `${restWithBookingAdvice.length}/${allRestaurants.length} (${pct(restWithBookingAdvice.length, allRestaurants.length)})`,
+    "nearbyAttraction populated": `${restWithNearbyAttraction.length}/${allRestaurants.length} (${pct(restWithNearbyAttraction.length, allRestaurants.length)})`,
+    "reservationRequired = true": `${restReservationTrue.length}/${allRestaurants.length}`,
+    "Activities w/ nearbyDining": `${actWithNearbyDining.length}/${allActivities.length} (${pct(actWithNearbyDining.length, allActivities.length)})`,
+    "Dining suggestions (total)": `${totalNearbyDining}`,
+  };
+}
+
+type Metrics = Record<string, string>;
+
+// ─── Side-by-side comparison table ────────────────────────────────────────────
+
+function printComparisonTable(current: Metrics, candidate: Metrics) {
+  const rows = Object.keys(current).map((metric) => ({
+    metric,
+    current: current[metric],
+    candidate: candidate[metric] ?? "—",
+  }));
+
+  const cMetric = Math.max(6, ...rows.map((r) => r.metric.length));
+  const cCur = Math.max(7, ...rows.map((r) => r.current.length));
+  const cCand = Math.max(9, ...rows.map((r) => r.candidate.length));
+
+  const pad = (s: string, w: number) => s.padEnd(w);
+  const line = (l: string, m: string, r: string, fill: string) =>
+    `${l}${fill.repeat(cMetric + 2)}${m}${fill.repeat(cCur + 2)}${m}${fill.repeat(cCand + 2)}${r}`;
+
+  console.log(`\n${"═".repeat(60)}`);
+  console.log("  COMPARISON TABLE");
+  console.log("═".repeat(60));
+  console.log(line("┌", "┬", "┐", "─"));
+  console.log(
+    `│ ${pad("Metric", cMetric)} │ ${pad("CURRENT", cCur)} │ ${pad("CANDIDATE", cCand)} │`
+  );
+  console.log(line("├", "┼", "┤", "─"));
+  for (const r of rows) {
+    console.log(
+      `│ ${pad(r.metric, cMetric)} │ ${pad(r.current, cCur)} │ ${pad(r.candidate, cCand)} │`
+    );
+  }
+  console.log(line("└", "┴", "┘", "─"));
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -376,8 +425,10 @@ async function main() {
     callOpenAI(CANDIDATE_SYSTEM_PROMPT, "CANDIDATE"),
   ]);
 
-  analyseResult("CURRENT", currentResult);
-  analyseResult("CANDIDATE", candidateResult);
+  const currentMetrics = analyseResult("CURRENT", currentResult);
+  const candidateMetrics = analyseResult("CANDIDATE", candidateResult);
+
+  printComparisonTable(currentMetrics, candidateMetrics);
 
   // Write raw JSON outputs for manual inspection
   const fs = await import("fs");
