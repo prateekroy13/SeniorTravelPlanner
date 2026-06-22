@@ -27,6 +27,23 @@ if (!API_KEY) {
   process.exit(1);
 }
 
+// Endpoint differs by base: direct OpenAI is version-prefixed (/v1/...), while
+// the Replit AI Integrations proxy base URL already includes the version, so it
+// only needs /chat/completions. Detect direct OpenAI by host.
+const IS_DIRECT_OPENAI = /(^|\.)api\.openai\.com$/i.test(
+  (() => {
+    try {
+      return new URL(BASE_URL).hostname;
+    } catch {
+      return "";
+    }
+  })()
+);
+const COMPLETIONS_URL = `${BASE_URL}${IS_DIRECT_OPENAI ? "/v1" : ""}/chat/completions`;
+console.log(
+  `Base: ${BASE_URL}  (${IS_DIRECT_OPENAI ? "direct OpenAI" : "Replit AI proxy"})\nEndpoint: ${COMPLETIONS_URL}`
+);
+
 // ─── Fixed test payload ──────────────────────────────────────────────────────
 // Using Rome, 2 days, moderate pace — small enough to be fast/cheap but rich
 // enough to exercise the restaurant + attraction proximity logic.
@@ -125,13 +142,102 @@ Attraction + Restaurant co-planning (NEW — apply strictly):
 
 IMPORTANT: Respond ONLY with valid, complete JSON. No markdown, no truncation.`;
 
+// ─── Strict output schema (OpenAI structured outputs) ─────────────────────────
+// Forces BOTH prompts to return an identical structure so the comparison is
+// apples-to-apples. Because every field is required by the schema, the analyzer
+// measures how richly each field is POPULATED rather than whether it merely
+// exists.
+
+const ITINERARY_SCHEMA = {
+  name: "itinerary",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      days: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            day: { type: "integer" },
+            activities: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  openingHours: { type: "string" },
+                  bestTimeToVisit: { type: "string" },
+                  crowdLevel: { type: "string", enum: ["low", "medium", "high"] },
+                  nearbyDining: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      properties: {
+                        name: { type: "string" },
+                        cuisine: { type: "string" },
+                        walkMinutes: { type: "integer" },
+                      },
+                      required: ["name", "cuisine", "walkMinutes"],
+                    },
+                  },
+                },
+                required: [
+                  "name",
+                  "description",
+                  "openingHours",
+                  "bestTimeToVisit",
+                  "crowdLevel",
+                  "nearbyDining",
+                ],
+              },
+            },
+            restaurants: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string" },
+                  cuisine: { type: "string" },
+                  mealType: { type: "string", enum: ["lunch", "dinner"] },
+                  openingHours: { type: "string" },
+                  reservationRequired: { type: "boolean" },
+                  bookingAdvice: { type: "string" },
+                  nearbyAttraction: { type: "string" },
+                },
+                required: [
+                  "name",
+                  "cuisine",
+                  "mealType",
+                  "openingHours",
+                  "reservationRequired",
+                  "bookingAdvice",
+                  "nearbyAttraction",
+                ],
+              },
+            },
+          },
+          required: ["day", "activities", "restaurants"],
+        },
+      },
+    },
+    required: ["days"],
+  },
+};
+
 // ─── OpenAI call helper ───────────────────────────────────────────────────────
 
 async function callOpenAI(systemPrompt: string, label: string): Promise<any> {
   console.log(`\n⏳  Calling OpenAI [${label}] ...`);
   const start = Date.now();
 
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+  const response = await fetch(COMPLETIONS_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -144,7 +250,7 @@ async function callOpenAI(systemPrompt: string, label: string): Promise<any> {
         { role: "system", content: systemPrompt },
         { role: "user", content: USER_PROMPT },
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_schema", json_schema: ITINERARY_SCHEMA },
     }),
   });
 
@@ -166,56 +272,38 @@ async function callOpenAI(systemPrompt: string, label: string): Promise<any> {
 // ─── Comparison analysis ──────────────────────────────────────────────────────
 
 function analyseResult(label: string, itinerary: any) {
-  // Support both the current schema (top-level "itinerary" array, one combined
-  // "activities" array per day) and the older assumed schema (dayPlans +
-  // separate restaurants + morning/afternoon/evening).
-  const days: any[] = itinerary.itinerary ?? itinerary.dayPlans ?? itinerary.days ?? [];
+  // With structured outputs the schema is guaranteed: top-level "days", each
+  // with "activities" and "restaurants". No more shape-guessing.
+  const days: any[] = itinerary.days ?? [];
 
-  const allActivities = days.flatMap((d: any) => [
-    ...(d.activities ?? []),
-    ...(d.morning ?? []),
-    ...(d.afternoon ?? []),
-    ...(d.evening ?? []),
-  ]);
+  const allActivities = days.flatMap((d: any) => d.activities ?? []);
+  const allRestaurants = days.flatMap((d: any) => d.restaurants ?? []);
 
-  // Restaurants are activity items carrying dining-specific fields, plus any
-  // explicit restaurants array (older schema).
-  const allRestaurants = [
-    ...days.flatMap((d: any) => d.restaurants ?? []),
-    ...allActivities.filter(
-      (a: any) =>
-        "reservationRequired" in a ||
-        a.bookingAdvice !== undefined ||
-        a.nearbyAttraction !== undefined
-    ),
-  ];
+  // Schema forces every field to exist, so presence is meaningless. Measure how
+  // richly each field is POPULATED — that's where CURRENT vs CANDIDATE diverges.
+  const nonEmpty = (s: any) => typeof s === "string" && s.trim() !== "";
 
-  const hasReservationField = allActivities.some(
-    (a: any) => "reservationRequired" in a
-  );
-  const hasBookingAdvice = allActivities.some(
-    (a: any) => a.bookingAdvice !== undefined
-  );
-  const hasOpeningHours = allActivities.some(
-    (a: any) => a.openingHours !== undefined
-  );
-  const hasNearbyDining = allActivities.some(
+  const restWithOpeningHours = allRestaurants.filter((r: any) => nonEmpty(r.openingHours));
+  const restWithBookingAdvice = allRestaurants.filter((r: any) => nonEmpty(r.bookingAdvice));
+  const restWithNearbyAttraction = allRestaurants.filter((r: any) => nonEmpty(r.nearbyAttraction));
+  const restReservationTrue = allRestaurants.filter((r: any) => r.reservationRequired === true);
+  const actWithNearbyDining = allActivities.filter(
     (a: any) => Array.isArray(a.nearbyDining) && a.nearbyDining.length > 0
   );
-  const hasNearbyAttractionHighlight = allActivities.some(
-    (a: any) => a.nearbyAttraction && String(a.nearbyAttraction).trim() !== ""
+  const totalNearbyDining = actWithNearbyDining.reduce(
+    (sum: number, a: any) => sum + a.nearbyDining.length,
+    0
   );
 
+  const pct = (n: number, total: number) =>
+    total === 0 ? "0%" : `${Math.round((n / total) * 100)}%`;
+
   const likedRestsIncluded = TEST_PAYLOAD.likedRestaurants.filter((lr) =>
-    allActivities.some((a: any) =>
-      a.name?.toLowerCase().includes(lr.toLowerCase())
-    )
+    allRestaurants.some((r: any) => r.name?.toLowerCase().includes(lr.toLowerCase()))
   );
 
   const likedAttrsIncluded = TEST_PAYLOAD.likedAttractions.filter((la) =>
-    allActivities.some((a: any) =>
-      a.name?.toLowerCase().includes(la.toLowerCase())
-    )
+    allActivities.some((a: any) => a.name?.toLowerCase().includes(la.toLowerCase()))
   );
 
   console.log(`\n${"─".repeat(60)}`);
@@ -230,21 +318,21 @@ function analyseResult(label: string, itinerary: any) {
   console.log(
     `  Liked restaurants covered: ${likedRestsIncluded.join(", ") || "none"} (${likedRestsIncluded.length}/${TEST_PAYLOAD.likedRestaurants.length})`
   );
-  console.log(`\n  New fields check:`);
+  console.log(`\n  Field population (how richly each field is filled):`);
   console.log(
-    `  ✔ reservationRequired field:    ${hasReservationField ? "YES" : "NO ✗"}`
+    `  • restaurant openingHours:    ${restWithOpeningHours.length}/${allRestaurants.length} (${pct(restWithOpeningHours.length, allRestaurants.length)})`
   );
   console.log(
-    `  ✔ bookingAdvice field:          ${hasBookingAdvice ? "YES" : "NO ✗"}`
+    `  • bookingAdvice populated:    ${restWithBookingAdvice.length}/${allRestaurants.length} (${pct(restWithBookingAdvice.length, allRestaurants.length)})`
   );
   console.log(
-    `  ✔ restaurant openingHours:      ${hasOpeningHours ? "YES" : "NO ✗"}`
+    `  • nearbyAttraction populated: ${restWithNearbyAttraction.length}/${allRestaurants.length} (${pct(restWithNearbyAttraction.length, allRestaurants.length)})`
   );
   console.log(
-    `  ✔ nearbyDining on activities:   ${hasNearbyDining ? "YES" : "NO ✗"}`
+    `  • reservationRequired = true: ${restReservationTrue.length}/${allRestaurants.length}`
   );
   console.log(
-    `  ✔ nearbyAttraction highlights:  ${hasNearbyAttractionHighlight ? "YES" : "NO ✗"}`
+    `  • activities w/ nearbyDining: ${actWithNearbyDining.length}/${allActivities.length} (${pct(actWithNearbyDining.length, allActivities.length)})  —  ${totalNearbyDining} dining suggestions total`
   );
 
   // Print a sample day-1 restaurant for manual review

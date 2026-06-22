@@ -1,119 +1,102 @@
 {
-  "day_1": {
-    "date": "2023-10-15",
-    "activities": [
-      {
-        "name": "Colosseum",
-        "description": "Explore this iconic symbol of Rome, known for ancient gladiatorial combat.",
-        "best_time": "08:30 AM",
-        "crowd_level": "medium",
-        "opening_hours": "08:30 AM - 07:00 PM"
-      },
-      {
-        "name": "Roman Forum",
-        "description": "Walk through the heart of ancient Rome, with ruins of important government buildings.",
-        "best_time": "10:30 AM",
-        "crowd_level": "medium",
-        "opening_hours": "08:30 AM - 07:00 PM"
-      },
-      {
-        "name": "Rest Stop: Giardino degli Aranci",
-        "description": "Relax in this serene garden with stunning views of the city.",
-        "best_time": "02:00 PM",
-        "crowd_level": "low",
-        "opening_hours": "24 hours"
-      },
-      {
-        "name": "Pantheon",
-        "description": "Marvel at the best-preserved building from ancient Rome.",
-        "best_time": "03:00 PM",
-        "crowd_level": "medium",
-        "opening_hours": "09:00 AM - 07:15 PM"
-      }
-    ],
-    "restaurants": [
-      {
-        "name": "Da Enzo al 29",
-        "type": "Trattoria",
-        "meal": "Lunch",
-        "description": "Enjoy an authentic Roman meal with gluten-free options available.",
-        "budget_estimate": "15-25 EUR"
-      },
-      {
-        "name": "Ristorante Il Margutta",
-        "type": "Restaurant",
-        "meal": "Dinner",
-        "description": "Savor gluten-free Italian dishes in a cozy atmosphere.",
-        "budget_estimate": "30-40 EUR"
-      }
-    ],
-    "side_trips": [
-      {
-        "name": "Piazza Navona",
-        "description": "A beautiful square with fountains and baroque architecture.",
-        "crowd_level": "medium",
-        "distance": "1.2 km from Pantheon"
-      }
-    ],
-    "public_transport": {
-      "method": "Bus",
-      "description": "Accessible buses available from Colosseum to Roman Forum and Pantheon."
+  "days": [
+    {
+      "day": 1,
+      "activities": [
+        {
+          "name": "Colosseum",
+          "description": "Explore the ancient amphitheater of Rome. Accessible entrance available through main entrance.",
+          "openingHours": "09:00-19:00",
+          "bestTimeToVisit": "09:00",
+          "crowdLevel": "medium",
+          "nearbyDining": [
+            {
+              "name": "Trattoria Luzzi",
+              "cuisine": "Italian",
+              "walkMinutes": 10
+            },
+            {
+              "name": "Angelino ai Fori",
+              "cuisine": "Italian",
+              "walkMinutes": 12
+            }
+          ]
+        }
+      ],
+      "restaurants": [
+        {
+          "name": "Pizzarium",
+          "cuisine": "Pizza",
+          "mealType": "lunch",
+          "openingHours": "11:00-16:00",
+          "reservationRequired": false,
+          "bookingAdvice": "Arrive early to avoid lines; limited gluten-free options available.",
+          "nearbyAttraction": "Colosseum"
+        },
+        {
+          "name": "Da Enzo al 29",
+          "cuisine": "Italian",
+          "mealType": "dinner",
+          "openingHours": "12:30-15:00, 19:00-23:00",
+          "reservationRequired": true,
+          "bookingAdvice": "Book a table well in advance and inform about gluten-free options.",
+          "nearbyAttraction": "Trastevere"
+        }
+      ]
     },
-    "total_steps": 5800
-  },
-  "day_2": {
-    "date": "2023-10-16",
-    "activities": [
-      {
-        "name": "Trastevere",
-        "description": "Stroll through this charming neighborhood filled with narrow streets and local charm.",
-        "best_time": "09:00 AM",
-        "crowd_level": "low",
-        "opening_hours": "Open area"
-      },
-      {
-        "name": "Santa Maria in Trastevere",
-        "description": "Visit one of Rome's oldest churches, famed for its mosaics.",
-        "best_time": "11:00 AM",
-        "crowd_level": "low",
-        "opening_hours": "07:30 AM - 09:00 PM"
-      },
-      {
-        "name": "Rest Stop: Villa Farnesina Gardens",
-        "description": "Take a break amidst Renaissance art and beautiful gardens.",
-        "best_time": "01:00 PM",
-        "crowd_level": "low",
-        "opening_hours": "08:30 AM - 02:00 PM"
-      }
-    ],
-    "restaurants": [
-      {
-        "name": "Pizzarium",
-        "type": "Pizzeria",
-        "meal": "Lunch",
-        "description": "Famous for delicious gluten-free pizza al taglio.",
-        "budget_estimate": "10-15 EUR"
-      },
-      {
-        "name": "Osteria der Belli",
-        "type": "Osteria",
-        "meal": "Dinner",
-        "description": "Offers gluten-free Roman seafood dishes.",
-        "budget_estimate": "25-35 EUR"
-      }
-    ],
-    "side_trips": [
-      {
-        "name": "Aventine Hill",
-        "description": "Discover the keyhole view of St. Peter's Basilica.",
-        "crowd_level": "low",
-        "distance": "2 km from Trastevere"
-      }
-    ],
-    "public_transport": {
-      "method": "Tram",
-      "description": "Trams in Trastevere are accessible and connect to major sites."
-    },
-    "total_steps": 6100
-  }
+    {
+      "day": 2,
+      "activities": [
+        {
+          "name": "Pantheon",
+          "description": "Visit the well-preserved ancient Roman temple with easy access entrance.",
+          "openingHours": "09:00-19:00",
+          "bestTimeToVisit": "09:00",
+          "crowdLevel": "low",
+          "nearbyDining": [
+            {
+              "name": "Antica Salumeria",
+              "cuisine": "Italian",
+              "walkMinutes": 5
+            },
+            {
+              "name": "Caffè Tazza d'Oro",
+              "cuisine": "Coffee",
+              "walkMinutes": 2
+            }
+          ]
+        },
+        {
+          "name": "Trastevere",
+          "description": "Enjoy a leisurely walk through this charming historic neighborhood. Mostly flat pathways.",
+          "openingHours": "All day",
+          "bestTimeToVisit": "15:00",
+          "crowdLevel": "medium",
+          "nearbyDining": [
+            {
+              "name": "Carlo Menta",
+              "cuisine": "Italian",
+              "walkMinutes": 8
+            },
+            {
+              "name": "Ombre Rosse",
+              "cuisine": "Italian",
+              "walkMinutes": 5
+            }
+          ]
+        }
+      ],
+      "restaurants": [
+        {
+          "name": "Osteria da Fortunata",
+          "cuisine": "Italian",
+          "mealType": "lunch",
+          "openingHours": "12:00-23:00",
+          "reservationRequired": false,
+          "bookingAdvice": "Good gluten-free options available, arrive early for lunch to avoid rush.",
+          "nearbyAttraction": "Pantheon"
+        }
+      ]
+    }
+  ]
 }
