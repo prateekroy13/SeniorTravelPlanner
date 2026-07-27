@@ -208,7 +208,123 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
       ],
-      response_format: { type: "json_object" },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "itinerary",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title","city","country","days","travelMonth","overview","seniorFriendlyScore","seniorFriendlyNotes","totalEstimatedCostLow","totalEstimatedCostHigh","currency","weatherInfo","emergencyNumbers","dayPlans"],
+            properties: {
+              title: { type: "string" },
+              city: { type: "string" },
+              country: { type: "string" },
+              days: { type: "number" },
+              travelMonth: { type: "string" },
+              overview: { type: "string" },
+              seniorFriendlyScore: { type: "number" },
+              seniorFriendlyNotes: { type: "string" },
+              totalEstimatedCostLow: { type: "number" },
+              totalEstimatedCostHigh: { type: "number" },
+              currency: { type: "string" },
+              weatherInfo: { type: "string" },
+              emergencyNumbers: { type: "string" },
+              dayPlans: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["dayNumber","theme","morning","afternoon","evening","totalSteps","totalWalkingMinutes","activeHours","estimatedCostLow","estimatedCostHigh","currency","restaurants","transportOptions","sideTrips","crowdAvoidanceTip","weatherNote"],
+                  properties: {
+                    dayNumber: { type: "number" },
+                    theme: { type: "string" },
+                    totalSteps: { type: "number" },
+                    totalWalkingMinutes: { type: "number" },
+                    activeHours: { type: "number" },
+                    estimatedCostLow: { type: "number" },
+                    estimatedCostHigh: { type: "number" },
+                    currency: { type: "string" },
+                    crowdAvoidanceTip: { type: "string" },
+                    weatherNote: { type: "string" },
+                    morning:   { type: "array", items: { $ref: "#/$defs/activity" } },
+                    afternoon: { type: "array", items: { $ref: "#/$defs/activity" } },
+                    evening:   { type: "array", items: { $ref: "#/$defs/activity" } },
+                    restaurants: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["name","cuisine","priceRange","description","wheelchairFriendly","nearbyAttraction"],
+                        properties: {
+                          name: { type: "string" },
+                          cuisine: { type: "string" },
+                          priceRange: { type: "string" },
+                          description: { type: "string" },
+                          wheelchairFriendly: { type: "boolean" },
+                          nearbyAttraction: { type: "string" }
+                        }
+                      }
+                    },
+                    transportOptions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["mode","description","estimatedCost","accessibilityNotes"],
+                        properties: {
+                          mode: { type: "string" },
+                          description: { type: "string" },
+                          estimatedCost: { type: "string" },
+                          accessibilityNotes: { type: "string" }
+                        }
+                      }
+                    },
+                    sideTrips: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["name","description","distance","extraSteps","extraTime","estimatedCost"],
+                        properties: {
+                          name: { type: "string" },
+                          description: { type: "string" },
+                          distance: { type: "string" },
+                          extraSteps: { type: "number" },
+                          extraTime: { type: "string" },
+                          estimatedCost: { type: "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            $defs: {
+              activity: {
+                type: "object",
+                additionalProperties: false,
+                required: ["name","description","duration","walkingMinutes","steps","cost","tips","isRestStop","crowdLevel","openingHours","bestTimeToVisit","travelMinutesToNext"],
+                properties: {
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  duration: { type: "string" },
+                  walkingMinutes: { type: "number" },
+                  steps: { type: "number" },
+                  cost: { type: "string" },
+                  tips: { type: "string" },
+                  isRestStop: { type: "boolean" },
+                  crowdLevel: { type: "string", enum: ["low","medium","high"] },
+                  openingHours: { type: "string" },
+                  bestTimeToVisit: { type: "string" },
+                  travelMinutesToNext: { type: "number" }
+                }
+              }
+            }
+          }
+        }
+      },
     });
 
     const content = completion.choices[0]?.message?.content;

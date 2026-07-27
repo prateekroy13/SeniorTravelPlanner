@@ -298,6 +298,15 @@ components:
           type: string
         isRestStop:
           type: boolean
+        crowdLevel:
+          type: string
+          enum: [low, medium, high]
+        openingHours:
+          type: string
+        bestTimeToVisit:
+          type: string
+        travelMinutesToNext:
+          type: number
       required:
         - name
         - description
@@ -305,6 +314,7 @@ components:
         - walkingMinutes
         - steps
         - cost
+        - travelMinutesToNext
 
     Restaurant:
       type: object

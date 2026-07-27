@@ -5,6 +5,7 @@
  * SeniorTravel API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DayActivityCrowdLevel } from "./dayActivityCrowdLevel";
 
 export interface DayActivity {
   name: string;
@@ -15,4 +16,8 @@ export interface DayActivity {
   cost: string;
   tips?: string;
   isRestStop?: boolean;
+  crowdLevel?: DayActivityCrowdLevel;
+  openingHours?: string;
+  bestTimeToVisit?: string;
+  travelMinutesToNext: number;
 }

@@ -21,6 +21,11 @@ Items to address before the next EAS native build and store submission.
 - **Root cause:** `buildActivity` references `crowdLevel`, `openingHours`, `bestTimeToVisit`, and `travelMinutesToNext` on activity objects, but `DayActivity` in `lib/api-zod/src/generated/types/dayActivity.ts` defines none of these fields. The AI returns them as undocumented extras.
 - **Fix:** Add the missing fields to the `DayActivity` schema in the API spec and regenerate types, so the contract is explicit.
 
+### 4. Itinerary API: unpinned JSON schema causes shape drift in production
+- **File:** `artifacts/api-server/src/routes/itineraries.ts` (line 204)
+- **Root cause:** The OpenAI call uses `response_format: { type: "json_object" }` with no schema constraint. GPT-4o freely varies the response shape between runs — confirmed shapes include `{ dayPlans: [...] }`, `{ day_1: {...}, day_2: {...} }`, and `{ itinerary: [...] }` with both camelCase and snake_case fields. The app's `JSON.parse` at line 220 will silently succeed but the mobile client will receive a broken itinerary.
+- **Fix:** Switch to `response_format: { type: "json_schema", ... }` (OpenAI structured outputs) with a strict schema derived from the existing Zod types. Pending system prompt update (tracked separately).
+
 ---
 
 ## Pending Items

@@ -76,6 +76,15 @@ export interface Itinerary {
   updatedAt: string;
 }
 
+export type DayActivityCrowdLevel =
+  (typeof DayActivityCrowdLevel)[keyof typeof DayActivityCrowdLevel];
+
+export const DayActivityCrowdLevel = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
 export interface DayActivity {
   name: string;
   description: string;
@@ -85,6 +94,10 @@ export interface DayActivity {
   cost: string;
   tips?: string;
   isRestStop?: boolean;
+  crowdLevel?: DayActivityCrowdLevel;
+  openingHours?: string;
+  bestTimeToVisit?: string;
+  travelMinutesToNext: number;
 }
 
 export interface Restaurant {

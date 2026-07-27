@@ -9,6 +9,7 @@
 export * from "./createItineraryBody";
 export * from "./createItineraryBodyGeneratedData";
 export * from "./dayActivity";
+export * from "./dayActivityCrowdLevel";
 export * from "./dayPlan";
 export * from "./destination";
 export * from "./generatedItinerary";
