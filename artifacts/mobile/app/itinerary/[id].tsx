@@ -9,6 +9,9 @@ import {
   Alert,
   Share,
   ActivityIndicator,
+  Modal,
+  Linking,
+  Pressable,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +39,8 @@ export default function ItineraryScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   let itinerary: any = null;
   try {
@@ -81,19 +86,70 @@ export default function ItineraryScreen() {
     }
   };
 
+  const buildShareText = () => {
+    const dayList = (itinerary.dayPlans ?? [])
+      .map((d: any) => {
+        const acts = [...(d.morning ?? []), ...(d.afternoon ?? []), ...(d.evening ?? [])]
+          .map((a: any) => `  • ${a.name}`)
+          .join("\n");
+        return `Day ${d.dayNumber}${d.theme ? ` — ${d.theme}` : ""}\n${acts}`;
+      })
+      .join("\n\n");
+    return `✈️ ${itinerary.title}\n📍 ${itinerary.city}, ${itinerary.country} — ${itinerary.days} days${itinerary.travelMonth ? ` (${itinerary.travelMonth})` : ""}\n\n${itinerary.overview ?? ""}\n\n${dayList}\n\nPlanned with SeniorTravel 🧳`;
+  };
+
   const handleShare = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const message = buildShareText();
+    if (Platform.OS !== "web") {
+      // Native: the system share sheet already offers WhatsApp, email, SMS, etc.
+      try {
+        await Share.share({ title: itinerary.title, message });
+      } catch (e) {
+        console.warn("Share failed", e);
+      }
+      return;
+    }
+    // Web: show our own share menu (Web Share API is unavailable in most
+    // desktop browsers and inside the embedded preview).
+    setCopied(false);
+    setShareSheetVisible(true);
+  };
+
+  const shareVia = async (target: "whatsapp" | "email" | "telegram" | "x" | "copy") => {
+    const text = buildShareText();
+    const enc = encodeURIComponent;
     try {
-      const dayList = itinerary.dayPlans
-        ?.slice(0, 3)
-        .map((d: any) => `Day ${d.dayNumber}: ${d.theme}`)
-        .join("\n");
-      await Share.share({
-        title: itinerary.title,
-        message: `${itinerary.title}\n${itinerary.city}, ${itinerary.country} — ${itinerary.days} days\n\n${itinerary.overview}\n\n${dayList}`,
-      });
+      switch (target) {
+        case "whatsapp":
+          await Linking.openURL(`https://wa.me/?text=${enc(text)}`);
+          break;
+        case "email":
+          await Linking.openURL(
+            `mailto:?subject=${enc(`${itinerary.title} — ${itinerary.city} travel plan`)}&body=${enc(text)}`
+          );
+          break;
+        case "telegram":
+          await Linking.openURL(`https://t.me/share/url?url=${enc(" ")}&text=${enc(text)}`);
+          break;
+        case "x": {
+          // X caps post length; share a compact summary there.
+          const short = `✈️ ${itinerary.title} — ${itinerary.days} days in ${itinerary.city}, ${itinerary.country}. Planned with SeniorTravel 🧳`;
+          await Linking.openURL(`https://twitter.com/intent/tweet?text=${enc(short)}`);
+          break;
+        }
+        case "copy":
+          if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }
+          return; // keep the sheet open to show "Copied!"
+      }
+      setShareSheetVisible(false);
     } catch (e) {
       console.warn("Share failed", e);
+      Alert.alert("Share failed", "Could not open the selected app.");
     }
   };
 
@@ -446,9 +502,184 @@ export default function ItineraryScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={shareSheetVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShareSheetVisible(false)}
+      >
+        <Pressable
+          style={shareStyles.backdrop}
+          onPress={(e) => {
+            // Only dismiss when the press lands on the backdrop itself,
+            // not on a child of the sheet (avoids nested-pressable issues).
+            if (e.target === e.currentTarget) setShareSheetVisible(false);
+          }}
+        >
+          <View style={shareStyles.sheet}>
+            <View style={shareStyles.handle} />
+            <Text style={shareStyles.title}>Share this itinerary</Text>
+            <Text style={shareStyles.subtitle}>
+              {itinerary.city}, {itinerary.country} · {itinerary.days} days
+            </Text>
+
+            <ShareOption
+              color="#25D366"
+              icon={<Ionicons name="logo-whatsapp" size={22} color="#fff" />}
+              label="WhatsApp"
+              sub="Send to a chat or group"
+              onPress={() => shareVia("whatsapp")}
+            />
+            <ShareOption
+              color="#C4622D"
+              icon={<Feather name="mail" size={20} color="#fff" />}
+              label="Email"
+              sub="Send the full plan by email"
+              onPress={() => shareVia("email")}
+            />
+            <ShareOption
+              color="#229ED9"
+              icon={<Ionicons name="paper-plane" size={20} color="#fff" />}
+              label="Telegram"
+              sub="Share via Telegram"
+              onPress={() => shareVia("telegram")}
+            />
+            <ShareOption
+              color="#111"
+              icon={<Text style={shareStyles.xLogo}>𝕏</Text>}
+              label="X (Twitter)"
+              sub="Post a short summary"
+              onPress={() => shareVia("x")}
+            />
+            <ShareOption
+              color={copied ? Colors.light.primary : "#6B7280"}
+              icon={<Feather name={copied ? "check" : "copy"} size={20} color="#fff" />}
+              label={copied ? "Copied!" : "Copy to clipboard"}
+              sub="Paste it anywhere"
+              onPress={() => shareVia("copy")}
+            />
+
+            <Pressable
+              onPress={() => setShareSheetVisible(false)}
+              style={shareStyles.cancelBtn}
+              accessibilityRole="button"
+            >
+              <Text style={shareStyles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
+
+function ShareOption({
+  color,
+  icon,
+  label,
+  sub,
+  onPress,
+}: {
+  color: string;
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={shareStyles.option}>
+      <View style={[shareStyles.optionIcon, { backgroundColor: color }]}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text style={shareStyles.optionLabel}>{label}</Text>
+        <Text style={shareStyles.optionSub}>{sub}</Text>
+      </View>
+      <Feather name="chevron-right" size={18} color={Colors.light.textTertiary} />
+    </TouchableOpacity>
+  );
+}
+
+const shareStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E5E7EB",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.light.text,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    textAlign: "center",
+    marginTop: 2,
+    marginBottom: 14,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 11,
+  },
+  optionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.text,
+  },
+  optionSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: 1,
+  },
+  xLogo: {
+    fontSize: 18,
+    color: "#fff",
+    fontFamily: "Inter_700Bold",
+  },
+  cancelBtn: {
+    marginTop: 10,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+  },
+  cancelText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textSecondary,
+  },
+});
 
 function OverviewStat({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
