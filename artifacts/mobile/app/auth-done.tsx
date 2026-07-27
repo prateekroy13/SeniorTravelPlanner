@@ -41,7 +41,7 @@ export default function AuthDone() {
         if (data?.email) {
           await loginWithData(data);
           console.log("[auth-done] loginWithData done, navigating to tabs");
-          router.replace("/(tabs)/" as any);
+          router.replace("/(tabs)" as any);
           return;
         }
       }

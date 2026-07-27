@@ -173,7 +173,7 @@ export default function FoodSwipeScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)");
     }
   };
 

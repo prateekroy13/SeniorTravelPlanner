@@ -32,7 +32,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)");
     }
   }, [user, isLoading]);
 
@@ -132,7 +132,7 @@ export default function LoginScreen() {
         ) : (
           <TouchableOpacity
             style={styles.demoBtn}
-            onPress={() => { enterGuestMode(); router.replace("/(tabs)/"); }}
+            onPress={() => { enterGuestMode(); router.replace("/(tabs)"); }}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -151,7 +151,7 @@ export default function LoginScreen() {
             style={styles.guestBtn}
             onPress={() => {
               enterGuestMode();
-              router.replace("/(tabs)/");
+              router.replace("/(tabs)");
             }}
             activeOpacity={0.7}
           >
