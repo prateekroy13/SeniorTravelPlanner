@@ -413,7 +413,7 @@ router.post("/itineraries", async (req: Request, res: Response) => {
 
 router.get("/itineraries/:id", async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const [row] = await db
       .select()
       .from(itinerariesTable)
@@ -438,7 +438,7 @@ router.get("/itineraries/:id", async (req: Request, res: Response) => {
 
 router.delete("/itineraries/:id", async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     await db.delete(itinerariesTable).where(eq(itinerariesTable.id, id));
     res.status(204).send();
   } catch (err) {

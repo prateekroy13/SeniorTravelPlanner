@@ -46,7 +46,7 @@ router.post("/sparks", async (req: Request, res: Response) => {
 router.get("/sparks/user/:authorName", async (req: Request, res: Response) => {
   try {
     const deviceId = (req.query.deviceId as string) || "";
-    const authorName = decodeURIComponent(req.params.authorName);
+    const authorName = decodeURIComponent(req.params.authorName as string);
     const { rows } = await pool.query(
       `SELECT s.*,
         CASE WHEN sl.device_id IS NOT NULL THEN true ELSE false END AS liked_by_me
@@ -66,7 +66,7 @@ router.get("/sparks/user/:authorName", async (req: Request, res: Response) => {
 
 router.post("/sparks/:id/like", async (req: Request, res: Response) => {
   try {
-    const sparkId = parseInt(req.params.id);
+    const sparkId = parseInt(req.params.id as string);
     const { deviceId } = req.body;
 
     if (!deviceId) {

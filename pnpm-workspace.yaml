@@ -40,8 +40,9 @@ catalog:
   '@tailwindcss/vite': ^4.1.14
   '@tanstack/react-query': ^5.90.21
   '@types/node': ^25.3.3
-  '@types/react': ^19.2.0
-  '@types/react-dom': ^19.2.0
+  # Pinned to match Expo's peer requirement; overrides below enforce a single copy
+  '@types/react': 19.1.17
+  '@types/react-dom': 19.1.11
   '@vitejs/plugin-react': ^5.0.4
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
@@ -150,3 +151,6 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Deduplicate @types/react to a single version (Expo requires 19.1.17)
+  "@types/react": "19.1.17"
+  "@types/react-dom": "19.1.11"

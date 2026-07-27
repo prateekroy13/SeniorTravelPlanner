@@ -318,7 +318,7 @@ router.get("/destinations/search", (req: Request, res: Response) => {
 });
 
 router.get("/destinations/:id/attractions", (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const attractions = ATTRACTIONS[id];
 
   if (attractions) {
@@ -433,7 +433,7 @@ const RESTAURANTS: Record<string, Restaurant[]> = {
 };
 
 router.get("/destinations/:id/restaurants", (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const budget = (req.query.budget as string) || "mid";
   const restaurants = RESTAURANTS[id];
 

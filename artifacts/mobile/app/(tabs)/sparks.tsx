@@ -475,7 +475,7 @@ export default function SparksScreen() {
   }
 
   if (pref === null || editing) {
-    const currentCities = (pref && pref !== "loading" && pref.mode === "cities") ? pref.cities : [];
+    const currentCities = (pref && pref.mode === "cities") ? pref.cities : [];
     return (
       <SparksOnboarding
         availableCities={availableCities}
