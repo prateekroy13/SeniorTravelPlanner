@@ -100,6 +100,8 @@ export const GenerateItineraryBody = zod.object({
     .min(generateItineraryBodyDaysMin)
     .max(generateItineraryBodyDaysMax),
   travelMonth: zod.string(),
+  likedAttractions: zod.array(zod.string()).optional(),
+  likedRestaurants: zod.array(zod.string()).optional(),
   preferences: zod.object({
     pace: zod.enum(["easy", "moderate", "active"]),
     maxStepsPerDay: zod.number().optional(),

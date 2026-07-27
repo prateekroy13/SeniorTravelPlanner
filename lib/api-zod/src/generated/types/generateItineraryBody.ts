@@ -16,5 +16,7 @@ export interface GenerateItineraryBody {
    */
   days: number;
   travelMonth: string;
+  likedAttractions?: string[];
+  likedRestaurants?: string[];
   preferences: UserPreferences;
 }

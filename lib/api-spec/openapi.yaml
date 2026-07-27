@@ -204,6 +204,14 @@ components:
           maximum: 7
         travelMonth:
           type: string
+        likedAttractions:
+          type: array
+          items:
+            type: string
+        likedRestaurants:
+          type: array
+          items:
+            type: string
         preferences:
           $ref: "#/components/schemas/UserPreferences"
       required:
