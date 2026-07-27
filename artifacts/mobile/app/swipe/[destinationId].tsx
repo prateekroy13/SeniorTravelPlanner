@@ -503,9 +503,19 @@ function ResultScreen({
           </LinearGradient>
         </TouchableOpacity>
 
+        <View style={resultStyles.orDivider}>
+          <View style={resultStyles.orLine} />
+          <Text style={resultStyles.orText}>or</Text>
+          <View style={resultStyles.orLine} />
+        </View>
+
         <TouchableOpacity onPress={onSkipRestaurants} activeOpacity={0.8} style={resultStyles.skipRestBtn}>
-          <Feather name="skip-forward" size={15} color={Colors.light.primary} />
-          <Text style={resultStyles.skipRestText}>Skip restaurants — go straight to planning</Text>
+          <Feather name="fast-forward" size={18} color="#fff" />
+          <View style={{ flex: 1 }}>
+            <Text style={resultStyles.skipRestText}>Skip Restaurants</Text>
+            <Text style={resultStyles.skipRestSub}>Plan my itinerary without dining picks</Text>
+          </View>
+          <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onBack} style={resultStyles.skipBtn}>
@@ -901,22 +911,45 @@ const resultStyles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     marginTop: 1,
   },
+  orDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 2,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  orText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.45)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
   skipRestBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
+    gap: 12,
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: "rgba(26,107,74,0.12)",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1.5,
-    borderColor: "rgba(26,107,74,0.25)",
+    borderColor: "rgba(255,255,255,0.25)",
   },
   skipRestText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.primary,
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  skipRestSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 1,
   },
   skipBtn: {
     alignItems: "center",

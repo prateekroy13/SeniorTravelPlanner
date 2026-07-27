@@ -333,16 +333,6 @@ export default function GenerateScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={handleGenerate}
-          activeOpacity={0.75}
-          disabled={!canGenerate || isGenerating}
-          style={styles.simpleGenBtn}
-        >
-          <Text style={[styles.simpleGenText, (!canGenerate || isGenerating) && { opacity: 0.4 }]}>
-            Generate basic itinerary
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -654,17 +644,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: "#fff",
-  },
-  simpleGenBtn: {
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  simpleGenText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.textSecondary,
-    textDecorationLine: "underline",
-    textDecorationColor: Colors.light.textTertiary,
   },
 });
 
