@@ -117,6 +117,8 @@ export default function ItineraryScreen() {
   };
 
   const shareVia = async (target: "whatsapp" | "email" | "telegram" | "x" | "copy") => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Build once and pass through — avoids rebuilding the full text on every tap.
     const text = buildShareText();
     const enc = encodeURIComponent;
     try {
@@ -138,13 +140,36 @@ export default function ItineraryScreen() {
           await Linking.openURL(`https://twitter.com/intent/tweet?text=${enc(short)}`);
           break;
         }
-        case "copy":
-          if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
-            await navigator.clipboard.writeText(text);
+        case "copy": {
+          let copied = false;
+          if (Platform.OS === "web" && typeof navigator !== "undefined") {
+            if (navigator.clipboard) {
+              await navigator.clipboard.writeText(text);
+              copied = true;
+            } else {
+              // Fallback for non-HTTPS or browsers without Clipboard API.
+              const el = document.createElement("textarea");
+              el.value = text;
+              el.style.position = "fixed";
+              el.style.opacity = "0";
+              document.body.appendChild(el);
+              el.focus();
+              el.select();
+              try {
+                copied = document.execCommand("copy");
+              } finally {
+                document.body.removeChild(el);
+              }
+            }
+          }
+          if (copied) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+          } else {
+            Alert.alert("Copy failed", "Could not copy to clipboard.");
           }
           return; // keep the sheet open to show "Copied!"
+        }
       }
       setShareSheetVisible(false);
     } catch (e) {
