@@ -102,23 +102,33 @@ export default function ItineraryScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsDownloading(true);
     try {
+      // Escape all dynamic content before HTML interpolation so untrusted
+      // strings can never inject markup or scripts into the document.
+      const esc = (v: unknown) =>
+        String(v ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+
       const buildActivity = (act: any) => `
         <div class="activity ${act.isRestStop ? "rest" : ""}">
           <div class="act-header">
-            <span class="act-name">${act.name}</span>
-            ${act.crowdLevel ? `<span class="crowd crowd-${act.crowdLevel}">${act.crowdLevel === "low" ? "Quiet" : act.crowdLevel === "medium" ? "Moderate" : "Busy"}</span>` : ""}
+            <span class="act-name">${esc(act.name)}</span>
+            ${act.crowdLevel ? `<span class="crowd crowd-${esc(act.crowdLevel)}">${act.crowdLevel === "low" ? "Quiet" : act.crowdLevel === "medium" ? "Moderate" : "Busy"}</span>` : ""}
             ${act.isRestStop ? '<span class="rest-tag">Rest Stop</span>' : ""}
           </div>
-          <p class="act-desc">${act.description || ""}</p>
-          ${act.openingHours ? `<div class="info-row"><span class="icon">🕐</span> ${act.openingHours}</div>` : ""}
-          ${act.bestTimeToVisit ? `<div class="info-row best-time"><span class="icon">☀️</span> ${act.bestTimeToVisit}</div>` : ""}
+          <p class="act-desc">${esc(act.description || "")}</p>
+          ${act.openingHours ? `<div class="info-row"><span class="icon">🕐</span> ${esc(act.openingHours)}</div>` : ""}
+          ${act.bestTimeToVisit ? `<div class="info-row best-time"><span class="icon">☀️</span> ${esc(act.bestTimeToVisit)}</div>` : ""}
           <div class="act-meta">
-            <span>⏱ ${act.duration}</span>
+            <span>⏱ ${esc(act.duration)}</span>
             <span>👟 ${(act.steps || 0).toLocaleString()} steps</span>
-            <span>💶 ${act.cost}</span>
+            <span>💶 ${esc(act.cost)}</span>
           </div>
-          ${act.tips ? `<div class="tip">💡 ${act.tips}</div>` : ""}
-          ${act.travelMinutesToNext ? `<div class="travel-connector">🚶 ${act.travelMinutesToNext} min walk to next stop</div>` : ""}
+          ${act.tips ? `<div class="tip">💡 ${esc(act.tips)}</div>` : ""}
+          ${act.travelMinutesToNext ? `<div class="travel-connector">🚶 ${esc(act.travelMinutesToNext)} min walk to next stop</div>` : ""}
         </div>`;
 
       const buildDay = (day: any) => {
@@ -131,15 +141,15 @@ export default function ItineraryScreen() {
         return `
           <div class="day-card">
             <div class="day-header">
-              <span class="day-num">Day ${day.dayNumber}</span>
-              <span class="day-theme">${day.theme || ""}</span>
+              <span class="day-num">Day ${esc(day.dayNumber)}</span>
+              <span class="day-theme">${esc(day.theme || "")}</span>
             </div>
             <div class="day-stats">
               <span>👟 ${(day.totalSteps || 0).toLocaleString()} steps</span>
-              <span>⏱ ${day.activeHours || 0}h active</span>
-              <span>💶 ${day.currency || ""}${day.estimatedCostLow || 0}–${day.estimatedCostHigh || 0}</span>
+              <span>⏱ ${esc(day.activeHours || 0)}h active</span>
+              <span>💶 ${esc(day.currency || "")}${esc(day.estimatedCostLow || 0)}–${esc(day.estimatedCostHigh || 0)}</span>
             </div>
-            ${day.crowdAvoidanceTip ? `<div class="crowd-tip">📢 ${day.crowdAvoidanceTip}</div>` : ""}
+            ${day.crowdAvoidanceTip ? `<div class="crowd-tip">📢 ${esc(day.crowdAvoidanceTip)}</div>` : ""}
             ${sections.map((s) => `
               <div class="time-block">
                 <div class="time-label">${s.label}</div>
@@ -150,9 +160,9 @@ export default function ItineraryScreen() {
                 <div class="time-label">🍽️ Where to Eat</div>
                 ${day.restaurants.map((r: any) => `
                   <div class="restaurant">
-                    <strong>${r.name}</strong> — ${r.cuisine} · ${r.priceRange}
-                    <p>${r.description || ""}</p>
-                    ${r.nearbyAttraction ? `<small>Near ${r.nearbyAttraction}</small>` : ""}
+                    <strong>${esc(r.name)}</strong> — ${esc(r.cuisine)} · ${esc(r.priceRange)}
+                    <p>${esc(r.description || "")}</p>
+                    ${r.nearbyAttraction ? `<small>Near ${esc(r.nearbyAttraction)}</small>` : ""}
                   </div>`).join("")}
               </div>` : ""}
           </div>`;
@@ -195,29 +205,82 @@ export default function ItineraryScreen() {
   .footer { margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; }
 </style></head>
 <body>
-  <h1>${itinerary.title}</h1>
-  <p class="subtitle">${itinerary.city}, ${itinerary.country} · ${itinerary.days} days · ${itinerary.travelMonth}</p>
-  <div class="overview">${itinerary.overview}</div>
+  <h1>${esc(itinerary.title)}</h1>
+  <p class="subtitle">${esc(itinerary.city)}, ${esc(itinerary.country)} · ${esc(itinerary.days)} days · ${esc(itinerary.travelMonth)}</p>
+  <div class="overview">${esc(itinerary.overview)}</div>
   <div class="meta">
-    <span>⭐ Senior Score: ${itinerary.seniorFriendlyScore}/10</span>
-    <span>💶 Est. Cost: ${itinerary.currency}${itinerary.totalEstimatedCostLow}–${itinerary.totalEstimatedCostHigh}</span>
-    <span>🌤 ${itinerary.weatherInfo || ""}</span>
+    <span>⭐ Senior Score: ${esc(itinerary.seniorFriendlyScore)}/10</span>
+    <span>💶 Est. Cost: ${esc(itinerary.currency)}${esc(itinerary.totalEstimatedCostLow)}–${esc(itinerary.totalEstimatedCostHigh)}</span>
+    <span>🌤 ${esc(itinerary.weatherInfo || "")}</span>
   </div>
-  ${itinerary.seniorFriendlyNotes ? `<p style="font-size:12px;color:#1A6B4A;margin-bottom:20px;">♿ ${itinerary.seniorFriendlyNotes}</p>` : ""}
+  ${itinerary.seniorFriendlyNotes ? `<p style="font-size:12px;color:#1A6B4A;margin-bottom:20px;">♿ ${esc(itinerary.seniorFriendlyNotes)}</p>` : ""}
   ${(itinerary.dayPlans || []).map(buildDay).join("")}
   <div class="footer">Generated by Tuttle · ${new Date().toLocaleDateString()}</div>
 </body></html>`;
 
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: `${itinerary.title} — Itinerary`,
-          UTI: "com.adobe.pdf",
+      if (Platform.OS === "web") {
+        // expo-print's printToFileAsync and expo-sharing are not supported on
+        // web. Render the HTML in a hidden iframe and open the browser's
+        // print dialog so the user can save it as a PDF.
+        await new Promise<void>((resolve, reject) => {
+          try {
+            const iframe = document.createElement("iframe");
+            iframe.style.position = "fixed";
+            iframe.style.right = "0";
+            iframe.style.bottom = "0";
+            iframe.style.width = "0";
+            iframe.style.height = "0";
+            iframe.style.border = "0";
+            document.body.appendChild(iframe);
+            const doc = iframe.contentWindow?.document;
+            if (!doc) {
+              document.body.removeChild(iframe);
+              reject(new Error("Could not create print frame"));
+              return;
+            }
+            doc.open();
+            doc.write(html);
+            doc.close();
+            const cleanup = () => {
+              if (iframe.parentNode) document.body.removeChild(iframe);
+            };
+            // Give the iframe a moment to layout before printing
+            setTimeout(() => {
+              const win = iframe.contentWindow;
+              if (!win || typeof win.print !== "function") {
+                cleanup();
+                reject(new Error("Print frame unavailable"));
+                return;
+              }
+              try {
+                // Clean up deterministically once printing finishes, with a
+                // fallback timeout in case afterprint never fires.
+                win.addEventListener("afterprint", cleanup);
+                setTimeout(cleanup, 60000);
+                win.focus();
+                win.print();
+                resolve();
+              } catch (err) {
+                cleanup();
+                reject(err);
+              }
+            }, 300);
+          } catch (err) {
+            reject(err);
+          }
         });
       } else {
-        Alert.alert("Saved", `PDF saved to: ${uri}`);
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "application/pdf",
+            dialogTitle: `${itinerary.title} — Itinerary`,
+            UTI: "com.adobe.pdf",
+          });
+        } else {
+          Alert.alert("Saved", `PDF saved to: ${uri}`);
+        }
       }
     } catch (e) {
       console.error("Download error", e);
