@@ -23,7 +23,9 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#071209"
-      }
+      },
+      "enableProguardInReleaseBuilds": true,
+      "proguardRules": "./proguard-rules.pro"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
