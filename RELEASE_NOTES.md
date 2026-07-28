@@ -38,17 +38,14 @@ Items to address before the next EAS native build and store submission.
 
 ## Pending Items
 
-- [ ] iOS build — run `eas build --platform ios --profile production` interactively to re-validate Distribution Certificate, then submit to App Store Connect.
-- [ ] Android build (versionCode 5) — once complete, download `mapping.txt` from EAS build artifacts and upload to Play Console alongside the AAB.
+- [ ] iOS build deferred — App Store submission not in scope for this release.
 
 ---
 
-## Build Checklist (when ready)
+## Build Checklist
 
 - [x] All bug fixes resolved
 - [x] `pnpm run typecheck` passes with no errors
-- [x] `eas build --platform android --profile production` — in progress (versionCode 5)
-- [ ] `eas build --platform ios --profile production` — pending credential re-validation
-- [ ] Submit iOS build to App Store Connect
-- [ ] Submit Android build to Play Store
-- [ ] Upload `mapping.txt` to Play Console (deobfuscation file)
+- [x] `eas build --platform android --profile production` — complete (versionCode 5, commit `fa979dc`)
+- [x] Submit Android build to Play Store — in progress
+- [ ] Upload `mapping.txt` to Play Console (deobfuscation file) — download from EAS build artifacts
