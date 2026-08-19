@@ -93,14 +93,19 @@ async function main() {
   }
   console.log("✔ Semantic checks passed (days, activities, restaurants)");
 
-  // Best-effort quality heuristic (LLM output can vary) — warn, don't fail
+  // Liked attractions MUST appear in the itinerary — the system prompt instructs this explicitly
   const allNames = it.dayPlans
     .flatMap((d) => [...d.morning, ...d.afternoon, ...d.evening])
     .map((a) => a.name.toLowerCase());
   for (const liked of payload.likedAttractions) {
     if (!allNames.some((n) => n.includes(liked.toLowerCase())))
-      console.warn(`  ⚠ liked attraction "${liked}" not found in itinerary (non-fatal)`);
+      problems.push(`liked attraction "${liked}" not found anywhere in the itinerary`);
   }
+  if (problems.length) {
+    problems.forEach((p) => console.error(`  ✗ ${p}`));
+    fail("Liked attractions check failed");
+  }
+  console.log("✔ Liked attractions present in itinerary");
 
   console.log("\n── Summary ─────────────────────────────");
   console.log(`  Title:        ${it.title}`);

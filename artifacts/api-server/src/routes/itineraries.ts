@@ -1,11 +1,34 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, itinerariesTable } from "@workspace/db";
+import { randomUUID } from "crypto";
+import { db, itinerariesTable, generationLogsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+const CITY_TYPES = new Set([
+  "locality", "administrative_area_level_1", "administrative_area_level_2",
+  "sublocality", "colloquial_area", "natural_feature", "archipelago",
+]);
+
+async function geocodeCity(city: string, country: string): Promise<boolean> {
+  if (!MAPS_KEY) return true; // gracefully degrade if no key configured
+  try {
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json` +
+      `?address=${encodeURIComponent(`${city}, ${country}`)}` +
+      `&key=${MAPS_KEY}`;
+    const r = await fetch(url);
+    const data = (await r.json()) as any;
+    if (data.status !== "OK" || !data.results?.length) return false;
+    const types: string[] = data.results[0]?.types ?? [];
+    return types.some((t) => CITY_TYPES.has(t));
+  } catch {
+    return true; // fail open — don't block generation on transient API errors
+  }
+}
 
 // Fetch real walking travel times between consecutive attractions using
 // Google Distance Matrix API. Returns formatted strings for the AI prompt.
@@ -44,7 +67,9 @@ async function getRealTravelTimes(
   return `\nREAL GOOGLE MAPS TRAVEL TIMES between selected attractions (use these exact figures in the itinerary):\n${lines.join("\n")}\n`;
 }
 
-const SYSTEM_PROMPT = `You are a senior-first travel planner AI. Generate realistic travel itineraries for senior travelers (ages 60+).
+const PROMPT_VERSION = "v2";
+
+const SYSTEM_PROMPT = `You are a travel planning AI. Generate realistic, personalized travel itineraries tailored to each traveler's stated preferences.
 
 Key requirements:
 - Pace activities for the specified preference (easy/moderate/active)
@@ -55,8 +80,7 @@ Key requirements:
 - Crowd level per attraction: "low" | "medium" | "high" (for the stated best time)
 - 1-2 rest stops per half-day (cafes, parks)
 - Public transport options with accessibility notes
-- 3 mid-tier restaurants per day
-- Budget estimates in local currency (mid-range realistic pricing)
+- 3 restaurants per day — price tier and budget estimates must match the traveler's stated Budget level exactly (budget = affordable local spots, mid = mid-range bistros and trattorias, luxury = upscale/fine dining)
 - 1-2 nearby side trips per day
 - Keep descriptions concise (max 80 words each)
 
@@ -132,7 +156,7 @@ Return ONLY a valid JSON object (no markdown) with this exact structure:
           "walkingMinutes": number,
           "steps": number,
           "cost": "string (e.g. 'Free' or '€15')",
-          "tips": "string (senior-specific, max 30 words)",
+          "tips": "string (helpful tip for this place, max 30 words)",
           "isRestStop": boolean,
           "travelMinutesToNext": number (0 if last activity of day)
         }
@@ -181,16 +205,36 @@ Return ONLY a valid JSON object (no markdown) with this exact structure:
 }
 
 router.post("/itineraries/generate", async (req: Request, res: Response) => {
-  try {
-    const { city, country, days, travelMonth, preferences, likedAttractions, likedRestaurants } = req.body;
+  const requestId = randomUUID();
+  const startedAt = Date.now();
+  let httpStatus = 500;
+  let errorType: string | null = null;
+  let tokensIn: number | null = null;
+  let tokensOut: number | null = null;
+  let distanceMatrixCalls = 0;
 
+  const { city, country, days, travelMonth, preferences, likedAttractions, likedRestaurants } = req.body;
+
+  try {
     if (!city || !country || !days || !travelMonth || !preferences) {
+      httpStatus = 400;
       res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    // Item 5: Geocode gate — reject typos/gibberish before the expensive LLM call
+    const cityValid = await geocodeCity(city, country);
+    if (!cityValid) {
+      httpStatus = 400;
+      res.status(400).json({
+        error: `"${city}, ${country}" doesn't appear to be a valid city. Please check the spelling and try again.`,
+      });
       return;
     }
 
     // Fetch real walking travel times between liked attractions to help the AI
     // correctly group close attractions on the same day and separate far ones.
+    distanceMatrixCalls = likedAttractions && likedAttractions.length > 1 ? 1 : 0;
     const realTravelTimes =
       likedAttractions && likedAttractions.length > 1
         ? await getRealTravelTimes(likedAttractions, `${city}, ${country}`)
@@ -333,11 +377,42 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
       return;
     }
 
+    tokensIn = completion.usage?.prompt_tokens ?? null;
+    tokensOut = completion.usage?.completion_tokens ?? null;
+
     const itinerary = JSON.parse(content);
+    httpStatus = 200;
     res.json(itinerary);
   } catch (err) {
     console.error("Generate itinerary error:", err);
-    res.status(500).json({ error: "Failed to generate itinerary" });
+    errorType = err instanceof Error ? err.constructor.name : "UnknownError";
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to generate itinerary" });
+    }
+  } finally {
+    // Item 4: Fire-and-forget generation log — never blocks the response
+    if (city) {
+      db.insert(generationLogsTable).values({
+        requestId,
+        userId: req.body.userId ?? null,
+        city,
+        country,
+        days,
+        travelMonth,
+        promptVersion: PROMPT_VERSION,
+        model: "gpt-4o",
+        tokensIn,
+        tokensOut,
+        estimatedCostUsd:
+          tokensIn != null && tokensOut != null
+            ? parseFloat(((tokensIn * 2.5 + tokensOut * 10) / 1_000_000).toFixed(6))
+            : null,
+        latencyMs: Math.round(Date.now() - startedAt),
+        googleDistanceMatrixCalls: distanceMatrixCalls,
+        httpStatus,
+        errorType,
+      }).catch(() => {});
+    }
   }
 });
 

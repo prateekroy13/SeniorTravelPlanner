@@ -65,12 +65,6 @@ export function SavedItineraryCard({ itinerary, onPress, onDelete }: SavedItiner
             <Feather name="sun" size={13} color={Colors.light.textSecondary} />
             <Text style={styles.statText}>{itinerary.travelMonth}</Text>
           </View>
-          {data?.seniorFriendlyScore && (
-            <View style={styles.statItem}>
-              <Feather name="star" size={13} color={Colors.light.accent} />
-              <Text style={styles.statText}>{data.seniorFriendlyScore}/10</Text>
-            </View>
-          )}
         </View>
 
         {data?.overview && (

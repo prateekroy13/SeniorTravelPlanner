@@ -23,7 +23,6 @@ import * as Sharing from "expo-sharing";
 import Colors from "@/constants/colors";
 import { DayCard } from "@/components/DayCard";
 import { useSavedItineraries } from "@/context/SavedItinerariesContext";
-import { ScoreRing } from "@/components/ui/ScoreRing";
 
 export default function ItineraryScreen() {
   const insets = useSafeAreaInsets();
@@ -290,7 +289,6 @@ export default function ItineraryScreen() {
   <p class="subtitle">${esc(itinerary.city)}, ${esc(itinerary.country)} · ${esc(itinerary.days)} days · ${esc(itinerary.travelMonth)}</p>
   <div class="overview">${esc(itinerary.overview)}</div>
   <div class="meta">
-    <span>⭐ Senior Score: ${esc(itinerary.seniorFriendlyScore)}/10</span>
     <span>💶 Est. Cost: ${esc(itinerary.currency)}${esc(itinerary.totalEstimatedCostLow)}–${esc(itinerary.totalEstimatedCostHigh)}</span>
     <span>🌤 ${esc(itinerary.weatherInfo || "")}</span>
   </div>
@@ -436,14 +434,6 @@ export default function ItineraryScreen() {
                 <Feather name="sun" size={13} color="rgba(255,255,255,0.9)" />
                 <Text style={styles.heroBadgeText}>{itinerary.travelMonth}</Text>
               </View>
-              {itinerary.seniorFriendlyScore && (
-                <View style={styles.heroBadge}>
-                  <Feather name="star" size={13} color={Colors.light.accent} />
-                  <Text style={[styles.heroBadgeText, { color: Colors.light.accent }]}>
-                    {itinerary.seniorFriendlyScore}/10
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
         </LinearGradient>
@@ -519,6 +509,7 @@ export default function ItineraryScreen() {
                       dayId: day.dayNumber,
                       data: JSON.stringify(day),
                       city: itinerary.city,
+                      itineraryId: params.id || savedId || "",
                     },
                   })
                 }

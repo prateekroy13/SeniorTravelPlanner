@@ -245,10 +245,6 @@ export default function ExploreScreen() {
                       <View style={styles.topPickContent}>
                         <Text style={styles.topPickCity}>{dest.city}</Text>
                         <Text style={styles.topPickCountry}>{dest.country}</Text>
-                        <View style={styles.scoreRow}>
-                          <Feather name="star" size={10} color={Colors.light.accent} />
-                          <Text style={styles.scoreLabel}>{dest.seniorFriendlyScore}/10</Text>
-                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}

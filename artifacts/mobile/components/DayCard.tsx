@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { API_BASE_URL } from "@/constants/api";
 
 interface Activity {
   name: string;
@@ -148,10 +150,26 @@ export function DayCard({ day, onPress }: DayCardProps) {
 
 interface DayDetailProps {
   day: DayPlan;
+  itineraryId?: string;
 }
 
-export function DayDetail({ day }: DayDetailProps) {
+export function DayDetail({ day, itineraryId }: DayDetailProps) {
   const [activeTab, setActiveTab] = useState<"plan" | "food" | "transport" | "sidetrips">("plan");
+
+  const makeReportHandler = (itemName: string, itemType: "activity" | "restaurant") =>
+    (issueType: string) => {
+      if (!itineraryId) {
+        Alert.alert("Save First", "Save this itinerary before reporting issues.");
+        return;
+      }
+      fetch(`${API_BASE_URL}/api/itineraries/${itineraryId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemType, itemName, dayNumber: day.dayNumber, issueType }),
+      })
+        .then(() => Alert.alert("Thanks!", "Your report helps us improve accuracy."))
+        .catch(() => Alert.alert("Error", "Could not send report. Try again later."));
+    };
 
   const sections = [
     { key: "morning", label: "Morning", activities: day.morning },
@@ -214,7 +232,7 @@ export function DayDetail({ day }: DayDetailProps) {
                 </View>
                 {activities.map((act, i) => (
                   <React.Fragment key={i}>
-                    <ActivityItem activity={act} />
+                    <ActivityItem activity={act} onReport={makeReportHandler(act.name, "activity")} />
                     {act.travelMinutesToNext != null && act.travelMinutesToNext > 0 && (
                       <View style={styles.travelConnector}>
                         <View style={styles.travelLine} />
@@ -238,7 +256,7 @@ export function DayDetail({ day }: DayDetailProps) {
       {activeTab === "food" && (
         <View style={styles.section}>
           {day.restaurants.map((r, i) => (
-            <RestaurantItem key={i} restaurant={r} index={i} />
+            <RestaurantItem key={i} restaurant={r} index={i} onReport={makeReportHandler(r.name, "restaurant")} />
           ))}
         </View>
       )}
@@ -299,7 +317,17 @@ const CROWD_LABELS: Record<string, string> = {
   high: "Busy",
 };
 
-function ActivityItem({ activity }: { activity: Activity }) {
+function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (issueType: string) => void }) {
+  const handleReportPress = () => {
+    Alert.alert(`Report: ${activity.name}`, "What issue did you find?", [
+      { text: "Closed / doesn't exist", onPress: () => onReport?.("doesnt_exist") },
+      { text: "Wrong opening hours", onPress: () => onReport?.("wrong_hours") },
+      { text: "Not accessible as described", onPress: () => onReport?.("not_accessible") },
+      { text: "Other", onPress: () => onReport?.("other") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
   return (
     <View
       style={[
@@ -318,7 +346,7 @@ function ActivityItem({ activity }: { activity: Activity }) {
       </View>
       <View style={styles.activityContent}>
         <View style={styles.activityHeader}>
-          <Text style={styles.activityName}>{activity.name}</Text>
+          <Text style={[styles.activityName, { flex: 1 }]}>{activity.name}</Text>
           {activity.isRestStop && (
             <View style={styles.restTag}>
               <Text style={styles.restTagText}>Rest</Text>
@@ -331,6 +359,11 @@ function ActivityItem({ activity }: { activity: Activity }) {
                 {CROWD_LABELS[activity.crowdLevel]}
               </Text>
             </View>
+          )}
+          {onReport && (
+            <TouchableOpacity onPress={handleReportPress} style={styles.reportBtn} hitSlop={8}>
+              <Feather name="flag" size={12} color={Colors.light.textTertiary} />
+            </TouchableOpacity>
           )}
         </View>
         <Text style={styles.activityDesc} numberOfLines={3}>
@@ -375,8 +408,18 @@ function ActivityItem({ activity }: { activity: Activity }) {
   );
 }
 
-function RestaurantItem({ restaurant, index }: { restaurant: Restaurant; index: number }) {
+function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restaurant; index: number; onReport?: (issueType: string) => void }) {
   const labels = ["Lunch", "Dinner", "Snack"];
+  const handleReportPress = () => {
+    Alert.alert(`Report: ${restaurant.name}`, "What issue did you find?", [
+      { text: "Closed / doesn't exist", onPress: () => onReport?.("doesnt_exist") },
+      { text: "Not wheelchair accessible as claimed", onPress: () => onReport?.("not_accessible") },
+      { text: "Wrong cuisine / description", onPress: () => onReport?.("wrong_info") },
+      { text: "Other", onPress: () => onReport?.("other") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
   return (
     <View style={styles.restaurantItem}>
       <View style={styles.restaurantHeader}>
@@ -388,6 +431,11 @@ function RestaurantItem({ restaurant, index }: { restaurant: Restaurant; index: 
             <MaterialCommunityIcons name="wheelchair-accessibility" size={12} color={Colors.light.primary} />
             <Text style={styles.accessText}>Accessible</Text>
           </View>
+        )}
+        {onReport && (
+          <TouchableOpacity onPress={handleReportPress} style={styles.reportBtn} hitSlop={8}>
+            <Feather name="flag" size={12} color={Colors.light.textTertiary} />
+          </TouchableOpacity>
         )}
       </View>
       <Text style={styles.restaurantName}>{restaurant.name}</Text>
@@ -806,6 +854,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: "#92400E",
+  },
+  reportBtn: {
+    padding: 4,
+    marginLeft: 2,
   },
   activityDesc: {
     fontSize: 13,

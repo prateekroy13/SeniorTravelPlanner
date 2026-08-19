@@ -10,7 +10,6 @@ import { Image } from "expo-image";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { ScoreRing } from "./ui/ScoreRing";
 
 interface Destination {
   id: string;
@@ -128,7 +127,6 @@ export function DestinationCard({ destination, onPress, variant = "vertical" }: 
             {destination.terrain}
           </Text>
         </View>
-        <ScoreRing score={destination.seniorFriendlyScore} size={44} />
       </TouchableOpacity>
     );
   }
@@ -140,10 +138,6 @@ export function DestinationCard({ destination, onPress, variant = "vertical" }: 
       style={styles.card}
     >
       <CardImageArea destination={destination} style={styles.cardImage}>
-        <View style={styles.scoreOverlay}>
-          <Feather name="star" size={12} color="#fff" />
-          <Text style={styles.scoreText}>{destination.seniorFriendlyScore}/10</Text>
-        </View>
         <View style={styles.locationTag}>
           <Feather name="map-pin" size={12} color="rgba(255,255,255,0.9)" />
           <Text style={styles.locationText}>{destination.country}</Text>

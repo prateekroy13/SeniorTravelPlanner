@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +21,7 @@ export default function DayDetailScreen() {
     dayId: string;
     data: string;
     city?: string;
+    itineraryId?: string;
   }>();
 
   let day: any = null;
@@ -75,7 +77,7 @@ export default function DayDetailScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <DayDetail day={day} />
+        <DayDetail day={day} itineraryId={params.itineraryId} />
       </ScrollView>
     </View>
   );
