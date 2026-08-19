@@ -398,7 +398,6 @@ function SwipeCard({
             <Text style={styles.cardDesc}>{attraction.description}</Text>
 
             <View style={styles.statsRow}>
-              <StatPill icon="activity" value={`${attraction.seniorScore}/10`} label="Senior Score" highlight />
               <StatPill icon="clock" value={`${attraction.walkingMinutes}m`} label="Walk" />
               <StatPill icon="map-pin" value={attraction.steps.toLocaleString()} label="Steps" />
             </View>

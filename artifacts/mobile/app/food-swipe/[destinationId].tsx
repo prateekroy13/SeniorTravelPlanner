@@ -463,15 +463,6 @@ function FoodCard({
 
             <Text style={styles.cardDesc}>{restaurant.description}</Text>
 
-            <View style={styles.statsRow}>
-              <View style={[styles.pill, styles.pillHL]}>
-                <Feather name="activity" size={11} color={Colors.light.accent} />
-                <Text style={[styles.pillVal, styles.pillValHL]}>
-                  {restaurant.seniorScore}/10
-                </Text>
-                <Text style={styles.pillLbl}>Senior Score</Text>
-              </View>
-            </View>
           </View>
 
           <View style={styles.cardHint}>
