@@ -30,3 +30,6 @@ prompt, so that request hangs and the phone reports a generic remote-update
 failure. Set `EXPO_OFFLINE=1` on the development command only: it skips online
 certificate retrieval while retaining the EAS project configuration, allowing
 the unsigned local-development manifest to respond immediately.
+
+This configuration was confirmed working with a physical Android device on
+August 20, 2026.
