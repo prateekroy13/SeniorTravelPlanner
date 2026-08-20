@@ -23,3 +23,10 @@ can leave Metro running on its default private port and produce a QR such as
 `exp://172.24.x.x:8081`, which no physical device can reach. Keep the managed
 mobile workflow as the QR source; its Expo proxy manifest must advertise the
 public `REPLIT_EXPO_DEV_DOMAIN`.
+
+When an app has an EAS project ID, Expo Go can request a signed development
+manifest. In a managed Replit workflow, the Expo CLI cannot answer its account
+prompt, so that request hangs and the phone reports a generic remote-update
+failure. Set `EXPO_OFFLINE=1` on the development command only: it skips online
+certificate retrieval while retaining the EAS project configuration, allowing
+the unsigned local-development manifest to respond immediately.
