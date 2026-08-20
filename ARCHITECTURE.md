@@ -11,7 +11,7 @@ flowchart TD
     API["⚙️ Express API\nsenior-travel-planner.replit.app"]
     PG[("🗄️ PostgreSQL\nReplit managed")]
     OpenAI["🤖 OpenAI API\nItinerary generation"]
-    Maps["🗺️ Google Maps API\nPhotos · Distance Matrix"]
+    Maps["🗺️ Google Maps API\nPhotos · Distance Matrix · Geocoding · Places Nearby Search"]
     OAuth["🔐 Google OAuth2\nSign-in"]
     Play["📦 Google Play Store\nDistribution"]
 
@@ -20,7 +20,7 @@ flowchart TD
     App -->|HTTPS| API
     API <-->|read · write| PG
     API -->|chat completion| OpenAI
-    API -->|place photos · walking times| Maps
+    API -->|geocoding · nearby search · photos · walking times| Maps
     API -->|OAuth flow| OAuth
 ```
 
@@ -96,9 +96,10 @@ Express App
     ├── GET  /maps/place-photo           Google Places proxy (in-memory cache)
     │
     ├── GET    /itineraries
-    ├── POST   /itineraries/generate     OpenAI + Distance Matrix
+    ├── POST   /itineraries/generate     RAG pipeline + OpenAI (see §6)
     ├── GET    /itineraries/:id
-    └── DELETE /itineraries/:id
+    ├── DELETE /itineraries/:id
+    └── POST   /itineraries/:id/report   User accuracy report → accuracy_reports
     │
     ├── GET  /sparks
     ├── POST /sparks
@@ -109,6 +110,8 @@ Express App
     ├── GET  /auth/google-callback
     ├── POST /auth/store-session
     └── GET  /auth/session/:id
+
+src/utils/places.ts   Geocoding + Places Nearby Search + city cache logic
 ```
 
 ### 3.2 Middleware Stack
@@ -169,6 +172,47 @@ erDiagram
     }
 
     SPARKS ||--o{ SPARK_LIKES : "has likes"
+
+    GENERATION_LOGS {
+        serial id PK
+        text request_id
+        text user_id
+        text city
+        text country
+        integer days
+        text travel_month
+        text prompt_version
+        text model
+        integer tokens_in
+        integer tokens_out
+        real estimated_cost_usd
+        integer latency_ms
+        integer google_distance_matrix_calls
+        integer http_status
+        text error_type
+        timestamp created_at
+    }
+
+    ACCURACY_REPORTS {
+        serial id PK
+        text itinerary_id
+        text item_type
+        text item_name
+        integer day_number
+        text issue_type
+        text notes
+        timestamp created_at
+    }
+
+    CITY_PLACES_CACHE {
+        serial id PK
+        text city
+        text country
+        text place_type
+        jsonb places
+        timestamp fetched_at
+        timestamp expires_at
+    }
 ```
 
 ### 4.2 ORM Access Pattern
@@ -178,6 +222,9 @@ erDiagram
 | `itineraries` | Drizzle ORM (typed queries) | Complex schema, type safety needed |
 | `sparks` + `spark_likes` | Raw `pg` pool | JOIN + conditional UPDATE, simpler as raw SQL |
 | `auth_sessions` | Raw `pg` pool | Simple key-value with TTL, no schema benefit |
+| `generation_logs` | Drizzle ORM | Structured logging, typed inserts |
+| `accuracy_reports` | Drizzle ORM | Structured inserts from report endpoint |
+| `city_places_cache` | Drizzle ORM | Typed upsert with `onConflictDoUpdate` |
 
 ---
 
@@ -248,12 +295,33 @@ sequenceDiagram
 flowchart TD
     Form["User fills generate form\ncity · days · month · preferences\nlikedAttractions · likedRestaurants"]
     Form --> Post["POST /api/itineraries/generate"]
-    Post --> DM["getRealTravelTimes()\nGoogle Distance Matrix API\nwalking times between liked attractions"]
-    DM --> OAI["OpenAI Chat Completion\n· Senior travel expert persona\n· City + user preferences\n· Liked places\n· Real walking times injected into prompt"]
-    OAI --> Resp["Structured JSON response\ndays → attractions + meals per day"]
-    Resp --> Insert["Drizzle INSERT into itineraries\ngenerated_data stored as JSONB"]
-    Insert --> Client["Response to app\nSavedItinerariesContext + AsyncStorage"]
+    Post --> Geo["geocodeCityCoords()\nGoogle Geocoding API\n· validates city exists\n· returns lat/lng"]
+    Geo -->|invalid city| Err["400 — invalid city"]
+    Geo -->|valid| Cache{"city_places_cache\nDB lookup\nexpires_at > now?"}
+    Cache -->|hit| Pool["Candidate pools ready\nno API call"]
+    Cache -->|miss| NS["TWO parallel Nearby Searches\nGoogle Places API (New)"]
+    NS --> NSA["Search A — 15 km\ncity core · rank by popularity\nmax 20 results → main pool"]
+    NS --> NSB["Search B — 50 km\nwider region · rank by popularity\nmax 20 results"]
+    NSB --> Filter["Filter insider pool\nrating ≥ 4.3 · reviews 20–500\nnot already in main pool\n→ top 10 hidden gems"]
+    NSA --> Upsert["Upsert city_places_cache\n30-day TTL · fire-and-forget"]
+    Filter --> Upsert
+    NSA --> Pool
+    Filter --> Pool
+    Pool --> DM["getRealTravelTimes()\nDistance Matrix API\nwalking times between liked attractions"]
+    DM --> Prompt["buildPrompt()\n+ VERIFIED MAIN POOL injected\n+ HIDDEN GEM CANDIDATES injected\n+ likedAttractions · likedRestaurants"]
+    Prompt --> OAI["OpenAI GPT-4o\njson_schema · strict:true\n· picks ONLY from candidate pool\n· weaves in 1–2 hidden gems"]
+    OAI --> Resp["Structured JSON itinerary"]
+    Resp --> Log["generation_logs INSERT\nfire-and-forget\ntokens · cost · latency · status"]
+    Resp --> Client["Response to mobile app"]
 ```
+
+### Why RAG?
+
+Before this pipeline, the LLM invented place names from its training data — a hallucination risk. The RAG approach changes the LLM's job from *"invent places"* to *"select and arrange from a verified, real candidate pool."* Opening hours, ratings, and review counts come from Google Maps, not the model's imagination.
+
+**City-level caching eliminates repeat API cost.** First user to generate a Rome itinerary fetches Places data (~$0.32 for two Nearby Searches). Every subsequent Rome generation within 30 days is served from `city_places_cache` at zero Google API cost.
+
+**Hidden gems are differentiated by review count, not category.** Both the main pool and the insider pool use identical place types (historical landmarks, architecture, viewpoints, beaches, monuments — no food). The distinction is purely: main pool = no review-count filter (top sights by popularity); insider pool = 20–500 reviews + ≥4.3★ + not already in main pool.
 
 ---
 
@@ -332,7 +400,17 @@ flowchart TD
 pnpm-workspace.yaml
 │
 ├── artifacts/mobile          @tuttle/mobile
-├── artifacts/api-server      @tuttle/api-server
+├── artifacts/api-server      @workspace/api-server
+│   └── src/
+│       ├── routes/
+│       │   ├── destinations.ts    curated city + attraction data (swipe screens)
+│       │   ├── itineraries.ts     AI generation (RAG pipeline) + CRUD
+│       │   ├── reports.ts         user accuracy reports
+│       │   ├── sparks.ts          community feed
+│       │   ├── maps.ts            Google Places photo proxy
+│       │   └── auth.ts            Google OAuth session flow
+│       └── utils/
+│           └── places.ts          Geocoding + Places Nearby Search + city cache
 ├── lib/db                    @workspace/db
 ├── lib/integrations-*        @workspace/integrations-openai-*
 ├── lib/api-spec              @workspace/api-spec
@@ -354,6 +432,9 @@ pnpm-workspace.yaml
 | Image storage | base64 in PostgreSQL text column | Simplest path for v1; no object storage to manage |
 | Delete button | Sibling `TouchableOpacity` elements | Avoids nested-touchable gesture bug in React Native New Architecture |
 | Build env vars | `EXPO_PUBLIC_*` baked in at EAS build | Only method available for native builds; not runtime-configurable |
+| RAG grounding | Places Nearby Search → verified candidate pool → LLM picks from list | Eliminates hallucinated place names; converts most factual claims from LLM-generated to API-sourced |
+| City-level Places cache | `city_places_cache` table, 30-day TTL, keyed by `(city, country, place_type)` | Amortises Google Places API cost across all users for the same city; first fetch ~$0.32, subsequent fetches free for 30 days |
+| Hidden gems via review count | Same place types as main pool; insider pool filtered to 20–500 reviews + ≥4.3★ | Avoids a separate category taxonomy; review count is a reliable low-footfall proxy from the Places API |
 
 ---
 
@@ -363,12 +444,15 @@ pnpm-workspace.yaml
 flowchart LR
     subgraph Now["v1 — Current"]
         N1["Android only"]
-        N2["15 hardcoded destinations"]
+        N2["14 hardcoded destinations for swipe screens\nAI generate works for any city via Places API"]
         N3["Google Sign-In only"]
         N4["base64 image storage"]
         N5["Open API endpoints"]
         N6["No push notifications"]
         N7["No offline support"]
+        N8["✓ Geocode gate\ncity validation before LLM call"]
+        N9["✓ Generation logging\ntokens · cost · latency per request"]
+        N10["✓ User accuracy reports\nReport an issue button in day detail"]
     end
 
     subgraph Next["v2 — Near Term"]

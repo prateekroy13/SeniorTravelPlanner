@@ -14,7 +14,7 @@ A mobile-first travel companion designed specifically for senior travelers. Tutt
 |---|---|
 | **Discover Destinations** | 14 curated cities worldwide, each rated on a Senior-Friendly Score (1–10) based on terrain, transport, and accessibility |
 | **Swipe Attractions** | Tinder-style card swipe to like/skip attractions and restaurants at each destination |
-| **AI Itinerary Generator** | OpenAI-powered day-by-day itinerary with real walking times between stops (Google Distance Matrix) |
+| **AI Itinerary Generator** | RAG-grounded AI itinerary: Google Places Nearby Search pre-fetches real attractions (geocoding + candidate pool), LLM selects and arranges from verified places only. Includes hidden gems (low-footfall picks). City data cached 30 days. |
 | **Saved Itineraries** | Cloud-persisted trip plans, linked to the signed-in user account |
 | **Sparks** | Community photo feed — travelers upload photos of spots and restaurants, like others' posts |
 | **Preferences & Onboarding** | Pace (easy/moderate/active), budget, dietary needs, accessibility requirements, font size |
@@ -45,7 +45,7 @@ A mobile-first travel companion designed specifically for senior travelers. Tutt
 | ORM | Drizzle ORM |
 | Database | PostgreSQL (Replit managed) |
 | AI | OpenAI API (itinerary generation) |
-| Maps | Google Maps Platform — Places API (photos), Distance Matrix API (walking times) |
+| Maps | Google Maps Platform — Geocoding API (city validation), Places Nearby Search API (RAG candidate pool), Places API (photos), Distance Matrix API (walking times) |
 | Auth | Google OAuth2 (server-side implicit flow, session stored in PostgreSQL) |
 | Hosting | Replit (`senior-travel-planner.replit.app`) |
 
@@ -83,7 +83,7 @@ A mobile-first travel companion designed specifically for senior travelers. Tutt
 │  /api/destinations/:id/restaurants                  │
 │  /api/maps/place-photo      Google Places → CDN URL │
 │  /api/itineraries           CRUD (Drizzle/Postgres) │
-│  /api/itineraries/generate  OpenAI + Distance Matrix│
+│  /api/itineraries/generate  RAG pipeline + OpenAI   │
 │  /api/sparks                CRUD + likes            │
 │  /api/auth/google-initiate  Start OAuth flow        │
 │  /api/auth/google-callback  Receive token, store    │
@@ -92,14 +92,17 @@ A mobile-first travel companion designed specifically for senior travelers. Tutt
 └──────┬─────────────────────────────────┬────────────┘
        │                                 │
        ▼                                 ▼
-┌─────────────┐                 ┌────────────────────┐
-│  PostgreSQL │                 │   External APIs    │
-│             │                 │                    │
-│ itineraries │                 │  OpenAI GPT-4      │
-│ sparks      │                 │  Google Maps       │
-│ spark_likes │                 │  Google OAuth2     │
-│auth_sessions│                 └────────────────────┘
-└─────────────┘
+┌──────────────────┐               ┌────────────────────┐
+│   PostgreSQL     │               │   External APIs    │
+│                  │               │                    │
+│ itineraries      │               │  OpenAI GPT-4o     │
+│ sparks           │               │  Google Maps:      │
+│ spark_likes      │               │  · Geocoding       │
+│ auth_sessions    │               │  · Places Nearby   │
+│ generation_logs  │               │  · Places Photos   │
+│ accuracy_reports │               │  · Distance Matrix │
+│city_places_cache │               │  Google OAuth2     │
+└──────────────────┘               └────────────────────┘
 ```
 
 ---
@@ -168,6 +171,49 @@ App                          CCT (Chrome Custom Tab)       API Server
 | created_at | timestamp | |
 | expires_at | timestamp | TTL: 5 minutes, one-time use |
 
+### `generation_logs`
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| request_id | text | UUID per generate call |
+| user_id | text | optional |
+| city, country | text | |
+| days | integer | |
+| travel_month | text | |
+| prompt_version | text | e.g. "v2" |
+| model | text | e.g. "gpt-4o" |
+| tokens_in, tokens_out | integer | |
+| estimated_cost_usd | real | `(tokensIn × $2.5 + tokensOut × $10) / 1M` |
+| latency_ms | integer | |
+| google_distance_matrix_calls | integer | |
+| http_status | integer | |
+| error_type | text | nullable |
+| created_at | timestamp | |
+
+### `accuracy_reports`
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| itinerary_id | text | FK reference |
+| item_type | text | `attraction` or `restaurant` |
+| item_name | text | name of the reported place |
+| day_number | integer | which day in the itinerary |
+| issue_type | text | `closed`, `wrong_address`, `doesnt_exist`, `wrong_hours`, `other` |
+| notes | text | optional user notes |
+| created_at | timestamp | |
+
+### `city_places_cache`
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| city | text | lowercase |
+| country | text | lowercase |
+| place_type | text | `main` (15 km pool) or `insider` (hidden gems, 50 km) |
+| places | jsonb | array of CachedPlace objects |
+| fetched_at | timestamp | when last populated |
+| expires_at | timestamp | TTL: 30 days from fetch |
+| — | unique index | `(city, country, place_type)` |
+
 ---
 
 ## Project Structure
@@ -191,12 +237,15 @@ SeniorTravelPlanner/
 │   └── api-server/           # Express API
 │       └── src/
 │           ├── routes/
-│           │   ├── destinations.ts   # Curated city + attraction data
-│           │   ├── itineraries.ts    # AI generation + CRUD
+│           │   ├── destinations.ts   # Curated city + attraction data (swipe screens)
+│           │   ├── itineraries.ts    # AI generation (RAG pipeline) + CRUD
+│           │   ├── reports.ts        # User accuracy reports
 │           │   ├── sparks.ts         # Community feed
 │           │   ├── maps.ts           # Google Places photo proxy
 │           │   └── auth.ts           # Google OAuth session flow
-│           └── app.ts               # Static pages (privacy, delete-account)
+│           ├── utils/
+│           │   └── places.ts         # Geocoding + Places Nearby Search + city cache
+│           └── app.ts               # Static pages + middleware
 ├── lib/
 │   ├── db/                   # Drizzle schema + Postgres pool
 │   └── integrations*/        # OpenAI client wrappers
