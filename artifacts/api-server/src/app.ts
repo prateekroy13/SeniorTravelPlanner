@@ -5,6 +5,10 @@ import router from "./routes";
 
 const app: Express = express();
 
+// Replit's proxy forwards the real client IP in X-Forwarded-For.
+// Trust exactly one hop so IP-based limiters stay scoped to each client.
+app.set("trust proxy", 1);
+
 // 5 AI generations per IP per hour — protects OpenAI spend
 const generateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

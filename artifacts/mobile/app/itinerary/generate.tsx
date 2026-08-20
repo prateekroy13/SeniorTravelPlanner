@@ -76,9 +76,33 @@ export default function GenerateScreen() {
       });
 
       if (!res.ok) {
-        const err = await res.text();
-        console.error("Generate error:", err);
-        Alert.alert("Error", "Failed to generate itinerary. Please try again.");
+        const responseText = await res.text();
+        let serverMessage = "";
+
+        try {
+          const errorData = JSON.parse(responseText) as { error?: unknown };
+          if (typeof errorData.error === "string") {
+            serverMessage = errorData.error;
+          }
+        } catch {
+          if (responseText.trim()) {
+            serverMessage = responseText.trim();
+          }
+        }
+
+        console.error("Generate error:", res.status, responseText);
+
+        if (res.status === 429) {
+          Alert.alert(
+            "Generation limit reached",
+            `${serverMessage || "Too many itinerary requests."}\n\nPlease wait for the limit to reset before trying again.`,
+          );
+        } else {
+          Alert.alert(
+            "Error",
+            serverMessage || "Failed to generate itinerary. Please try again.",
+          );
+        }
         return;
       }
 
