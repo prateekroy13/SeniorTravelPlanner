@@ -346,7 +346,7 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
       </View>
       <View style={styles.activityContent}>
         <View style={styles.activityHeader}>
-          <Text style={[styles.activityName, { flex: 1 }]}>{activity.name}</Text>
+          <Text style={styles.activityName}>{activity.name}</Text>
           {activity.isRestStop && (
             <View style={styles.restTag}>
               <Text style={styles.restTagText}>Rest</Text>
@@ -359,11 +359,6 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
                 {CROWD_LABELS[activity.crowdLevel]}
               </Text>
             </View>
-          )}
-          {onReport && (
-            <TouchableOpacity onPress={handleReportPress} style={styles.reportBtn} hitSlop={8}>
-              <Feather name="flag" size={12} color={Colors.light.textTertiary} />
-            </TouchableOpacity>
           )}
         </View>
         <Text style={styles.activityDesc} numberOfLines={3}>
@@ -403,6 +398,12 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
             <Text style={styles.tipInlineText}>{activity.tips}</Text>
           </View>
         )}
+        {onReport && (
+          <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
+            <Feather name="flag" size={11} color={Colors.light.textTertiary} />
+            <Text style={styles.reportRowText}>Report an issue</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -432,11 +433,6 @@ function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restauran
             <Text style={styles.accessText}>Accessible</Text>
           </View>
         )}
-        {onReport && (
-          <TouchableOpacity onPress={handleReportPress} style={styles.reportBtn} hitSlop={8}>
-            <Feather name="flag" size={12} color={Colors.light.textTertiary} />
-          </TouchableOpacity>
-        )}
       </View>
       <Text style={styles.restaurantName}>{restaurant.name}</Text>
       <View style={styles.restaurantRow}>
@@ -451,6 +447,12 @@ function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restauran
           <Feather name="map-pin" size={11} color={Colors.light.textTertiary} />
           <Text style={styles.nearbyText}>Near {restaurant.nearbyAttraction}</Text>
         </View>
+      )}
+      {onReport && (
+        <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
+          <Feather name="flag" size={11} color={Colors.light.textTertiary} />
+          <Text style={styles.reportRowText}>Report an issue</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -855,9 +857,16 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#92400E",
   },
-  reportBtn: {
-    padding: 4,
-    marginLeft: 2,
+  reportRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6,
+  },
+  reportRowText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textTertiary,
   },
   activityDesc: {
     fontSize: 13,
