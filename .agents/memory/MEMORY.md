@@ -2,3 +2,4 @@
 - [Static pages on API server](api-server-static-pages.md) — `/` and `/privacy` are HTML served from api-server app.ts; code changes need a re-publish to reach prod.
 - [Itinerary schema drift](itinerary-schema-drift.md) — AI output shape must be pinned with strict json_schema; contract test `test-generate` guards drift vs the OpenAPI contract.
 - [Expo Go remote updates](expo-go-remote-update.md) — diagnose remote bundle download errors with SDK compatibility checks before debugging app UI.
+- [Proxied rate limits](proxied-rate-limits.md) — trust one Replit proxy hop or Express IP limits log errors and can group users under the proxy IP.
