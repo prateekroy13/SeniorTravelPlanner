@@ -328,6 +328,13 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
     ]);
   };
 
+  // LLM tags hidden gem activities with "Hidden Gem" in the tips field.
+  // Strip the tag text so the visual badge handles the label instead.
+  const isHiddenGem = /hidden\s*gem/i.test(activity.tips ?? "");
+  const cleanTips = isHiddenGem
+    ? (activity.tips!.replace(/hidden\s*gem[\s:–—\-]*/i, "").trim() || undefined)
+    : activity.tips;
+
   return (
     <View
       style={[
@@ -340,6 +347,7 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
           style={[
             styles.activityDot,
             activity.isRestStop && { backgroundColor: Colors.light.accent },
+            isHiddenGem && { backgroundColor: "#7C3AED" },
           ]}
         />
         <View style={styles.activityLine} />
@@ -347,12 +355,18 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
       <View style={styles.activityContent}>
         <View style={styles.activityHeader}>
           <Text style={styles.activityName}>{activity.name}</Text>
+          {isHiddenGem && (
+            <View style={styles.gemBadge}>
+              <MaterialCommunityIcons name="diamond" size={10} color="#7C3AED" />
+              <Text style={styles.gemBadgeText}>Hidden Gem</Text>
+            </View>
+          )}
           {activity.isRestStop && (
             <View style={styles.restTag}>
               <Text style={styles.restTagText}>Rest</Text>
             </View>
           )}
-          {activity.crowdLevel && !activity.isRestStop && (
+          {activity.crowdLevel && !activity.isRestStop && !isHiddenGem && (
             <View style={[styles.crowdBadge, { backgroundColor: CROWD_COLORS[activity.crowdLevel] + "22" }]}>
               <View style={[styles.crowdDot, { backgroundColor: CROWD_COLORS[activity.crowdLevel] }]} />
               <Text style={[styles.crowdText, { color: CROWD_COLORS[activity.crowdLevel] }]}>
@@ -392,10 +406,10 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
             <Text style={styles.metaText}>{activity.cost}</Text>
           </View>
         </View>
-        {activity.tips && (
+        {cleanTips && (
           <View style={styles.tipInline}>
             <Feather name="info" size={11} color={Colors.light.primary} />
-            <Text style={styles.tipInlineText}>{activity.tips}</Text>
+            <Text style={styles.tipInlineText}>{cleanTips}</Text>
           </View>
         )}
         {onReport && (
@@ -856,6 +870,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: "#92400E",
+  },
+  gemBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "#EDE9FE",
+  },
+  gemBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "#7C3AED",
   },
   reportRow: {
     flexDirection: "row",
