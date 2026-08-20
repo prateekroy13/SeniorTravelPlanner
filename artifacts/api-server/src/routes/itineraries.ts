@@ -3,32 +3,11 @@ import { randomUUID } from "crypto";
 import { db, itinerariesTable, generationLogsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { eq } from "drizzle-orm";
+import { geocodeCityCoords, getCityPlaces, formatCandidatePool } from "../utils/places";
 
 const router: IRouter = Router();
 
 const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
-
-const CITY_TYPES = new Set([
-  "locality", "administrative_area_level_1", "administrative_area_level_2",
-  "sublocality", "colloquial_area", "natural_feature", "archipelago",
-]);
-
-async function geocodeCity(city: string, country: string): Promise<boolean> {
-  if (!MAPS_KEY) return true; // gracefully degrade if no key configured
-  try {
-    const url =
-      `https://maps.googleapis.com/maps/api/geocode/json` +
-      `?address=${encodeURIComponent(`${city}, ${country}`)}` +
-      `&key=${MAPS_KEY}`;
-    const r = await fetch(url);
-    const data = (await r.json()) as any;
-    if (data.status !== "OK" || !data.results?.length) return false;
-    const types: string[] = data.results[0]?.types ?? [];
-    return types.some((t) => CITY_TYPES.has(t));
-  } catch {
-    return true; // fail open — don't block generation on transient API errors
-  }
-}
 
 // Fetch real walking travel times between consecutive attractions using
 // Google Distance Matrix API. Returns formatted strings for the AI prompt.
@@ -94,6 +73,7 @@ function buildPrompt(body: {
   likedAttractions?: string[];
   likedRestaurants?: string[];
   realTravelTimes?: string;
+  candidatePool?: string;
   preferences: {
     pace: string;
     maxStepsPerDay?: number;
@@ -114,6 +94,7 @@ function buildPrompt(body: {
       : "";
 
   const travelTimesSection = body.realTravelTimes || "";
+  const candidateSection = body.candidatePool || "";
 
   return `Generate a ${body.days}-day itinerary for ${body.city}, ${body.country} in ${body.travelMonth}.
 
@@ -123,7 +104,7 @@ Traveler preferences:
 - Dietary needs: ${body.preferences.dietaryNeeds?.join(", ") || "none specified"}
 - Interests: ${body.preferences.interests?.join(", ") || "culture, history, food"}
 - Budget level: ${body.preferences.budgetLevel || "mid"}
-- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}${travelTimesSection}
+- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}${candidateSection}${travelTimesSection}
 Day-grouping rule: place attractions that are < 20 min walk apart on the SAME day. Attractions > 30 min walk apart go on SEPARATE days.
 
 Return ONLY a valid JSON object (no markdown) with this exact structure:
@@ -222,9 +203,11 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    // Item 5: Geocode gate — reject typos/gibberish before the expensive LLM call
-    const cityValid = await geocodeCity(city, country);
-    if (!cityValid) {
+    // Geocode gate: validates city and returns coordinates.
+    // When MAPS_KEY is set, null means invalid city → reject with 400.
+    // When MAPS_KEY is not set, returns null and we proceed without Places grounding.
+    const coords = MAPS_KEY ? await geocodeCityCoords(city, country) : null;
+    if (MAPS_KEY && coords === null) {
       httpStatus = 400;
       res.status(400).json({
         error: `"${city}, ${country}" doesn't appear to be a valid city. Please check the spelling and try again.`,
@@ -232,17 +215,26 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    // Fetch real walking travel times between liked attractions to help the AI
-    // correctly group close attractions on the same day and separate far ones.
+    // Fetch real walking travel times between liked attractions
     distanceMatrixCalls = likedAttractions && likedAttractions.length > 1 ? 1 : 0;
     const realTravelTimes =
       likedAttractions && likedAttractions.length > 1
         ? await getRealTravelTimes(likedAttractions, `${city}, ${country}`)
         : "";
 
+    // Fetch verified places from cache or Google Places API.
+    // Provides the LLM with a real candidate pool → eliminates hallucinated place names.
+    let candidatePool: string | undefined;
+    if (coords) {
+      const places = await getCityPlaces(city, country, coords);
+      if (places && places.main.length > 0) {
+        candidatePool = formatCandidatePool(places.main, places.insider);
+      }
+    }
+
     const prompt = buildPrompt({
       city, country, days, travelMonth, preferences,
-      likedAttractions, likedRestaurants, realTravelTimes,
+      likedAttractions, likedRestaurants, realTravelTimes, candidatePool,
     });
 
     const completion = await openai.chat.completions.create({
