@@ -268,13 +268,24 @@ export async function getCityPlaces(
     }
   }
 
+  // Types that indicate shopping, dining, or local-use venues — not travel attractions.
+  const EXCLUDE_MAIN_TYPES = new Set([
+    "market", "shopping_mall", "store", "supermarket", "convenience_store",
+    "clothing_store", "department_store", "grocery_store",
+    "restaurant", "cafe", "bar", "night_club",
+    "convention_center", "event_venue", "conference_center",
+    "lodging", "hotel",
+  ]);
+
   const mainPlaces = normalizePlaces(mergedMainRaw)
     .filter((p) => {
-      // 10k reviews minimum — removes minor local spots from all categories.
+      // 10k reviews + 4.3 rating minimum.
       if (p.userRatingCount < 10_000) return false;
-      // Religious-only places (not also tagged tourist_attraction / historical_landmark)
-      // need 50k+ reviews so only major landmarks (Lotus Temple ~100k, Akshardham ~60k,
-      // Jama Masjid, Stephansdom) survive — not neighbourhood shrines.
+      if (p.rating < 4.3) return false;
+      // Exclude shopping, dining, and business venues.
+      if (p.types.some((t) => EXCLUDE_MAIN_TYPES.has(t))) return false;
+      // Religious-only places need 50k+ reviews (Lotus Temple ~75k, Akshardham ~57k pass;
+      // neighbourhood shrines don't).
       const isReligious = p.types.some((t) => RELIGIOUS_TYPES_SET.has(t));
       const isCultural = p.types.some((t) => CULTURAL_OVERRIDE_TYPES.has(t));
       if (isReligious && !isCultural && p.userRatingCount < RELIGIOUS_MIN_REVIEWS) return false;

@@ -95,10 +95,18 @@ for (const p of [...touristOnly, ...broadTypes, ...religiousTypes]) {
 
 const RELIGIOUS_SET = new Set(RELIGIOUS_TYPES);
 const CULTURAL_SET = new Set(["tourist_attraction","historical_landmark","cultural_landmark"]);
+const EXCLUDE_SET = new Set([
+  "market","shopping_mall","store","supermarket","convenience_store",
+  "clothing_store","department_store","grocery_store",
+  "restaurant","cafe","bar","night_club",
+  "convention_center","event_venue","conference_center","lodging","hotel",
+]);
 
 const final20 = merged
   .filter(p => {
     if ((p.userRatingCount ?? 0) < 10000) return false;
+    if ((p.rating ?? 0) < 4.3) return false;
+    if ((p.types ?? []).some(t => EXCLUDE_SET.has(t))) return false;
     const rel = (p.types ?? []).some(t => RELIGIOUS_SET.has(t));
     const cult = (p.types ?? []).some(t => CULTURAL_SET.has(t));
     if (rel && !cult && (p.userRatingCount ?? 0) < 50000) return false;
