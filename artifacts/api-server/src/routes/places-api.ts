@@ -15,17 +15,26 @@ router.get("/places/city-autocomplete", async (req: Request, res: Response) => {
       `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
       `?input=${encodeURIComponent(input)}` +
       `&types=(cities)` +
-      `&languageCode=en` +
+      `&language=en` +
       `&key=${MAPS_KEY}`;
     const r = await fetch(url);
     const data = (await r.json()) as any;
-    const results = (data.predictions ?? []).slice(0, 6).map((p: any) => {
+
+    // Fetch up to 15 then deduplicate by city+country so e.g. "Delhi, United States"
+    // (NY / CA / OH) only occupies one slot, letting "Delhi, India" through.
+    const seen = new Set<string>();
+    const results: { city: string; country: string; description: string }[] = [];
+    for (const p of (data.predictions ?? []) as any[]) {
+      if (results.length >= 6) break;
       const main: string = p.structured_formatting?.main_text ?? p.description.split(",")[0].trim();
-      // secondary_text is typically "Country" or "State, Country" — take the last part
       const secondary: string = p.structured_formatting?.secondary_text ?? "";
       const country = secondary.split(",").pop()?.trim() ?? "";
-      return { city: main, country, description: p.description };
-    });
+      const key = `${main.toLowerCase()}|${country.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push({ city: main, country, description: p.description });
+      }
+    }
     res.json(results);
   } catch {
     res.json([]);
