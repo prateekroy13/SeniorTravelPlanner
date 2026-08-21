@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -41,6 +41,9 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [citySuggestions, setCitySuggestions] = useState<{ city: string; country: string; description: string }[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     data: destinations = [],
@@ -54,6 +57,7 @@ export default function ExploreScreen() {
 
   const handleSearch = async (text: string) => {
     setSearchQuery(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (text.length > 1) {
       setIsSearching(true);
       try {
@@ -64,9 +68,31 @@ export default function ExploreScreen() {
       } finally {
         setIsSearching(false);
       }
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`${BASE_URL}/api/places/city-autocomplete?input=${encodeURIComponent(text)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setCitySuggestions(data);
+            setShowCitySuggestions(data.length > 0);
+          }
+        } catch {}
+      }, 300);
     } else {
       setSearchResults([]);
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
     }
+  };
+
+  const handleSelectCity = (s: { city: string; country: string }) => {
+    setShowCitySuggestions(false);
+    setCitySuggestions([]);
+    setSearchQuery("");
+    router.push({
+      pathname: "/itinerary/generate",
+      params: { city: s.city, country: s.country },
+    });
   };
 
   const displayedDestinations = searchQuery.length > 1 ? searchResults : destinations;
@@ -116,23 +142,45 @@ export default function ExploreScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.searchContainer}>
-              <Feather name="search" size={18} color={Colors.light.textTertiary} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search destinations..."
-                placeholderTextColor={Colors.light.textTertiary}
-                value={searchQuery}
-                onChangeText={handleSearch}
-                returnKeyType="search"
-              />
-              {isSearching && (
-                <ActivityIndicator size="small" color={Colors.light.primary} style={styles.searchSpinner} />
-              )}
-              {searchQuery.length > 0 && !isSearching && (
-                <TouchableOpacity onPress={() => { setSearchQuery(""); setSearchResults([]); }}>
-                  <Feather name="x" size={16} color={Colors.light.textTertiary} />
-                </TouchableOpacity>
+            <View style={{ zIndex: 200 }}>
+              <View style={styles.searchContainer}>
+                <Feather name="search" size={18} color={Colors.light.textTertiary} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search or type any city..."
+                  placeholderTextColor={Colors.light.textTertiary}
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                  onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
+                  returnKeyType="search"
+                />
+                {isSearching && (
+                  <ActivityIndicator size="small" color={Colors.light.primary} style={styles.searchSpinner} />
+                )}
+                {searchQuery.length > 0 && !isSearching && (
+                  <TouchableOpacity onPress={() => { setSearchQuery(""); setSearchResults([]); setCitySuggestions([]); setShowCitySuggestions(false); }}>
+                    <Feather name="x" size={16} color={Colors.light.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {showCitySuggestions && citySuggestions.length > 0 && (
+                <View style={styles.citySuggestionsDropdown}>
+                  <Text style={styles.citySuggestionsLabel}>Plan a trip to…</Text>
+                  {citySuggestions.map((s, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[styles.citySuggestionItem, i < citySuggestions.length - 1 && styles.citySuggestionBorder]}
+                      onPress={() => handleSelectCity(s)}
+                    >
+                      <Feather name="map-pin" size={14} color={Colors.light.primary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.citySuggestionCity}>{s.city}</Text>
+                        {s.country ? <Text style={styles.citySuggestionCountry}>{s.country}</Text> : null}
+                      </View>
+                      <Feather name="arrow-right" size={13} color={Colors.light.textTertiary} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
             </View>
           </View>
@@ -359,6 +407,49 @@ const styles = StyleSheet.create({
     height: 50,
   },
   searchSpinner: { marginLeft: 4 },
+  citySuggestionsDropdown: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    marginTop: 8,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  citySuggestionsLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  citySuggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  citySuggestionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.borderLight,
+  },
+  citySuggestionCity: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.text,
+  },
+  citySuggestionCountry: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: 1,
+  },
   body: {
     paddingHorizontal: 20,
     gap: 24,
