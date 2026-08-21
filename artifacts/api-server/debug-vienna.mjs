@@ -144,8 +144,8 @@ async function main() {
     const off = offsetCoords(VIENNA.lat, VIENNA.lng, b.deg, OFFSET_KM);
     console.log(`── 2.${b.dir} OFFSET (bearing ${b.deg}°) — centre: ${off.lat.toFixed(4)}, ${off.lng.toFixed(4)} ─`);
 
-    const places = await nearbySearch(off.lat, off.lng, RADIUS_M, 20, DAY_TRIP_TYPES, "DISTANCE");
-    console.log(`  ${places.length} places returned (rank by DISTANCE)`);
+    const places = await nearbySearch(off.lat, off.lng, RADIUS_M, 20, DAY_TRIP_TYPES, "POPULARITY");
+    console.log(`  ${places.length} places returned (rank by POPULARITY)`);
 
     // Check for known targets in this batch
     for (const t of TARGETS) {
