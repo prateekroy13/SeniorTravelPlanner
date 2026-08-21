@@ -90,8 +90,8 @@ export default function ExploreScreen() {
     setCitySuggestions([]);
     setSearchQuery("");
     router.push({
-      pathname: "/itinerary/generate",
-      params: { city: s.city, country: s.country },
+      pathname: "/swipe/[destinationId]",
+      params: { destinationId: "custom", city: s.city, country: s.country },
     });
   };
 
@@ -187,29 +187,6 @@ export default function ExploreScreen() {
         </LinearGradient>
 
         <View style={styles.body}>
-          <TouchableOpacity
-            onPress={() => router.push("/itinerary/generate")}
-            activeOpacity={0.9}
-            style={styles.generateBanner}
-          >
-            <LinearGradient
-              colors={[Colors.light.accent, "#C87C2A"]}
-              style={styles.generateGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View>
-                <Text style={styles.generateTitle}>Create Your Itinerary</Text>
-                <Text style={styles.generateSubtitle}>
-                  AI-powered, senior-first travel planning
-                </Text>
-              </View>
-              <View style={styles.generateArrow}>
-                <Feather name="arrow-right" size={20} color="#fff" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
           {searchQuery.length > 1 ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
@@ -454,50 +431,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 24,
     paddingTop: 20,
-  },
-  generateBanner: {
-    borderRadius: 18,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.light.accent,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 14,
-      },
-      android: { elevation: 6 },
-      web: {
-        shadowColor: Colors.light.accent,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 14,
-      },
-    }),
-  },
-  generateGradient: {
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  generateTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  generateSubtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
-    marginTop: 4,
-  },
-  generateArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
   },
   section: { gap: 12 },
   sectionHeader: { gap: 4 },
