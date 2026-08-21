@@ -140,6 +140,23 @@ function offsetCoords(
   return { lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI };
 }
 
+// Haversine distance between two lat/lng points in km.
+function distanceKm(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // Fetches the main attraction pool (15 km city core) and insider picks from
 // four offset searches covering the 15–40 km outer ring around the city.
 // Caches both pools per city for 30 days.
@@ -178,23 +195,28 @@ export async function getCityPlaces(
     };
   }
 
-  // Cache miss — main pool + 4 outer-ring searches in parallel.
-  // The outer ring searches are offset 25 km N/E/S/W from the city centre, each
-  // with a 20 km radius. Combined they cover the ~5–45 km ring around the city
-  // and find places (day-trip towns, parks, outer attractions) that a city-centre
-  // search never surfaces because the famous central sites dominate by popularity.
+  // Cache miss — main pool (15km city core) + 4 day-trip searches in parallel.
+  //
+  // Day-trip strategy: offset 60km N/E/S/W from city centre, 40km radius each.
+  // This covers up to ~100km from the centre — catching classic day-trip towns
+  // (e.g. Melk from Vienna at 83km, Tivoli from Rome at 30km, Versailles from
+  // Paris at 25km) that a city-centre search never surfaces.
+  //
+  // After dedup, we filter to places >20km from the city centre (inner suburbs
+  // are already covered by the main pool) and sort furthest-first so genuine
+  // day-trip destinations rank above closer suburbs.
   const outerOffsets = [0, 90, 180, 270].map((b) =>
-    offsetCoords(coords.lat, coords.lng, b, 25)
+    offsetCoords(coords.lat, coords.lng, b, 60)
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 20_000, 10)),
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 10)),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
   const mainIds = new Set(mainPlaces.map((p) => p.placeId));
 
-  // Deduplicate outer-ring results then filter: not in main pool, quality ≥ 4.3
+  // Deduplicate outer-ring results by place ID.
   const seenInsider = new Set<string>();
   const insiderRaw: any[] = [];
   for (const batch of outerRaws) {
@@ -207,7 +229,21 @@ export async function getCityPlaces(
   }
 
   const insiderPlaces = normalizePlaces(insiderRaw)
-    .filter((p) => !mainIds.has(p.placeId) && p.userRatingCount >= 50 && p.rating >= 4.3)
+    .filter((p) => {
+      if (mainIds.has(p.placeId)) return false;
+      if (p.userRatingCount < 200) return false;
+      if (p.rating < 4.3) return false;
+      // Must be genuinely outside the city core — inner suburbs excluded.
+      const dist = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
+      return dist > 20;
+    })
+    // Furthest from city centre first → day-trip towns (Melk, Bratislava)
+    // naturally outrank closer suburbs.
+    .sort((a, b) => {
+      const da = distanceKm(coords.lat, coords.lng, a.lat, a.lng);
+      const db = distanceKm(coords.lat, coords.lng, b.lat, b.lng);
+      return db - da;
+    })
     .slice(0, 5);
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
