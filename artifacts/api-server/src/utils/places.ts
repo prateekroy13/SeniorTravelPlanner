@@ -211,11 +211,9 @@ export async function getCityPlaces(
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // DISTANCE ranking spreads results across the full 40km circle rather than
-    // clustering around whichever sub-area is most globally popular.
-    // This ensures a town like Melk (23km from the western offset point) isn't
-    // pushed out by a cluster of popular places near the offset centre.
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, "DISTANCE")),
+    // POPULARITY ranking with 20 results per direction (was 10 — Melk was position 11+).
+    // 4 directions × 20 = 80 raw candidates before dedup and quality filtering.
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20)),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
