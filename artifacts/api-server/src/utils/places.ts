@@ -245,20 +245,23 @@ export async function getCityPlaces(
   const outerOffsets = [0, 45, 90, 135, 180, 225, 270, 315].map((b) =>
     offsetCoords(coords.lat, coords.lng, b, 60)
   );
-  const [primaryRaw, religiousRaw, ...outerRaws] = await Promise.all([
-    nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // Second search dedicated to religious types. We merge and filter in
-    // post-processing so only major landmarks (Lotus Temple ~100k, Akshardham ~60k,
-    // Stephansdom ~150k) survive — not neighbourhood shrines.
+  const [touristOnlyRaw, categoryRaw, religiousRaw, ...outerRaws] = await Promise.all([
+    // Search 1: tourist_attraction ONLY — the 20 most visited tourist spots.
+    // Running this standalone (not mixed with museum/monument/etc.) ensures the
+    // popularity ranking is purely within tourist attractions, so famous landmarks
+    // like Lotus Temple and India Gate aren't pushed out by museums and parks.
+    nearbySearch(coords.lat, coords.lng, 15_000, 20, ["tourist_attraction"]),
+    // Search 2: category types — museums, galleries, monuments, natural parks etc.
+    nearbySearch(coords.lat, coords.lng, 15_000, 20, ATTRACTION_TYPES),
+    // Search 3: religious types — filtered to major landmarks (50k+ reviews) below.
     nearbySearch(coords.lat, coords.lng, 15_000, 20, RELIGIOUS_TYPES),
     ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "POPULARITY")),
   ]);
 
-  // Merge both raw batches and deduplicate by placeId BEFORE normalizing,
-  // so the slice(0,20) below operates on the full combined candidate set.
+  // Merge all 3 raw batches, deduplicate by placeId before any filtering.
   const seenMain = new Set<string>();
   const mergedMainRaw: any[] = [];
-  for (const p of [...primaryRaw, ...religiousRaw]) {
+  for (const p of [...touristOnlyRaw, ...categoryRaw, ...religiousRaw]) {
     if (p.id && !seenMain.has(p.id)) {
       seenMain.add(p.id);
       mergedMainRaw.push(p);
@@ -267,11 +270,11 @@ export async function getCityPlaces(
 
   const mainPlaces = normalizePlaces(mergedMainRaw)
     .filter((p) => {
-      // Require 10k+ reviews for all main-pool places.
+      // 10k reviews minimum — removes minor local spots from all categories.
       if (p.userRatingCount < 10_000) return false;
-      // Religious-only places (no tourist_attraction / historical_landmark tag)
-      // need 50k+ reviews — Lotus Temple (~100k) and Akshardham (~60k) pass;
-      // neighbourhood shrines don't.
+      // Religious-only places (not also tagged tourist_attraction / historical_landmark)
+      // need 50k+ reviews so only major landmarks (Lotus Temple ~100k, Akshardham ~60k,
+      // Jama Masjid, Stephansdom) survive — not neighbourhood shrines.
       const isReligious = p.types.some((t) => RELIGIOUS_TYPES_SET.has(t));
       const isCultural = p.types.some((t) => CULTURAL_OVERRIDE_TYPES.has(t));
       if (isReligious && !isCultural && p.userRatingCount < RELIGIOUS_MIN_REVIEWS) return false;
@@ -310,13 +313,11 @@ export async function getCityPlaces(
       const d = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
       if (d < 35) return false;
       if (p.types.some((t) => LOCAL_TYPES.has(t))) return false;
-      // Exclude religious-only places (small temples, shrines, parish churches).
-      // Exception: keep if also tagged tourist_attraction/historical_landmark/
-      // cultural_landmark — this lets Melk Abbey (church + tourist_attraction)
-      // through while removing small temples near Delhi.
-      const isReligious = p.types.some((t) => RELIGIOUS_TYPES_SET.has(t));
-      const isCulturalLandmark = p.types.some((t) => CULTURAL_OVERRIDE_TYPES.has(t));
-      if (isReligious && !isCulturalLandmark) return false;
+      // Any place with a religious type needs 25k+ reviews to qualify as a day trip.
+      // Melk Abbey (29k reviews) passes; small temples near Delhi (typically <15k) don't.
+      // This beats the previous tourist_attraction-exception approach which still let
+      // small temples through because Google tags them tourist_attraction too.
+      if (p.types.some((t) => RELIGIOUS_TYPES_SET.has(t)) && p.userRatingCount < 25_000) return false;
       return true;
     })
     .sort((a, b) => b.rating - a.rating || b.userRatingCount - a.userRatingCount)
