@@ -34,7 +34,7 @@ export default function GenerateScreen() {
 
   const [city, setCity] = useState(params.city || "");
   const [country, setCountry] = useState(params.country || "");
-  const [days, setDays] = useState(5);
+  const [days, setDays] = useState(0);
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -46,7 +46,12 @@ export default function GenerateScreen() {
     ? params.likedRestaurants.split(",").filter(Boolean)
     : [];
 
-  const canGenerate = city.trim().length > 1 && country.trim().length > 1;
+  const totalLiked = likedAttractions.length;
+  const spotsPerDay = preferences.pace === "easy" ? 2 : preferences.pace === "active" ? 4 : 3;
+  const minSuggestedDays = totalLiked > 0 ? Math.ceil(totalLiked / spotsPerDay) : 0;
+  const showFitWarning = days > 0 && totalLiked > 0 && days < minSuggestedDays;
+
+  const canGenerate = city.trim().length > 1 && country.trim().length > 1 && days > 0;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -243,8 +248,11 @@ export default function GenerateScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Trip Length</Text>
+          {days === 0 && (
+            <Text style={styles.daysHint}>Select how many days you'd like to travel</Text>
+          )}
           <View style={styles.daysRow}>
-            {[3, 4, 5, 6, 7].map((d) => (
+            {[3, 5, 7, 10, 14].map((d) => (
               <TouchableOpacity
                 key={d}
                 onPress={async () => {
@@ -255,11 +263,20 @@ export default function GenerateScreen() {
               >
                 <Text style={[styles.dayBtnNum, days === d && styles.dayBtnNumActive]}>{d}</Text>
                 <Text style={[styles.dayBtnLabel, days === d && styles.dayBtnLabelActive]}>
-                  {d === 1 ? "day" : "days"}
+                  days
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+          {showFitWarning && (
+            <View style={styles.fitWarning}>
+              <Feather name="alert-circle" size={14} color="#D97706" />
+              <Text style={styles.fitWarningText}>
+                You have {totalLiked} picks for {days} day{days !== 1 ? "s" : ""} — that's {Math.round((totalLiked / days) * 10) / 10} spots/day.
+                At {preferences.pace} pace, {minSuggestedDays}+ days gives a more comfortable trip.
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -514,6 +531,29 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.light.borderLight,
     marginHorizontal: 14,
+  },
+  daysHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: -4,
+  },
+  fitWarning: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  fitWarningText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#92400E",
+    lineHeight: 18,
   },
   daysRow: {
     flexDirection: "row",

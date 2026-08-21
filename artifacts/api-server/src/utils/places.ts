@@ -208,7 +208,7 @@ export async function getCityPlaces(
 
   const insiderPlaces = normalizePlaces(insiderRaw)
     .filter((p) => !mainIds.has(p.placeId) && p.userRatingCount >= 50 && p.rating >= 4.3)
-    .slice(0, 10);
+    .slice(0, 5);
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
 
