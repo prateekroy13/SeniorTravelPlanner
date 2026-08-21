@@ -85,7 +85,8 @@ async function nearbySearch(
   lng: number,
   radiusMeters: number,
   maxCount: number,
-  types: string[] = ATTRACTION_TYPES
+  types: string[] = ATTRACTION_TYPES,
+  rankBy: "POPULARITY" | "DISTANCE" = "POPULARITY"
 ): Promise<any[]> {
   if (!MAPS_KEY) return [];
   try {
@@ -108,7 +109,7 @@ async function nearbySearch(
             radius: radiusMeters,
           },
         },
-        rankPreference: "POPULARITY",
+        rankPreference: rankBy,
       }),
     });
     if (!res.ok) {
@@ -232,7 +233,12 @@ export async function getCityPlaces(
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES)),
+    // DISTANCE ranking: returns the 20 nearest DAY_TRIP_TYPES attractions to
+    // each offset centre, spreading results across the full 40km circle.
+    // POPULARITY was clustering around whichever sub-town sits closest to the
+    // offset centre (e.g. St. Pölten dominates the Vienna W-circle, pushing
+    // Melk — 17km further — out of the top 20).
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "DISTANCE")),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
@@ -250,19 +256,30 @@ export async function getCityPlaces(
     }
   }
 
+  // Types that indicate a local attraction, not a day-trip destination.
+  // Even if a place was returned via DAY_TRIP_TYPES (because it also has
+  // tourist_attraction), we reject it if its own returned types include these.
+  const LOCAL_TYPES = new Set([
+    "park", "garden", "botanical_garden", "observation_deck",
+    "beach", "zoo", "aquarium", "amusement_park", "campground",
+  ]);
+
   const insiderPlaces = normalizePlaces(insiderRaw)
     .filter((p) => {
       if (mainIds.has(p.placeId)) return false;
       if (p.userRatingCount < 1500) return false;
       if (p.rating < 4.3) return false;
-      // Must be genuinely outside the city core — inner suburbs excluded.
-      const dist = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
-      return dist > 20;
+      // 35km minimum: genuine day trips start here. Suburban parks at 22km
+      // passed the old 20km threshold — this closes that gap.
+      const d = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
+      if (d < 35) return false;
+      // Reject anything whose own returned types signal a local attraction,
+      // even if tourist_attraction also appears in its type list.
+      if (p.types.some((t) => LOCAL_TYPES.has(t))) return false;
+      return true;
     })
-    // Best day-trip towns first: sort by rating desc, then review count desc.
-    // Melk Abbey (4.7★, 29k reviews) surfaces before a small park (4.3★, 300 reviews).
     .sort((a, b) => b.rating - a.rating || b.userRatingCount - a.userRatingCount)
-    .slice(0, 5);
+    .slice(0, 8);
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
 
