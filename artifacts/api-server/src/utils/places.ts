@@ -171,12 +171,13 @@ export async function getCityPlaces(
   const mainIds = new Set(mainPlaces.map((p) => p.placeId));
 
   // Hidden gems: real, good quality, NOT already in main pool, low footfall
+  // Insider picks: quality attractions within 50km that aren't in the city-centre main pool.
+  // No upper review cap — the "not in main pool" exclusion already removes the mega-famous.
   const insiderPlaces = normalizePlaces(insiderRaw)
     .filter(
       (p) =>
         !mainIds.has(p.placeId) &&
-        p.userRatingCount >= 20 &&
-        p.userRatingCount <= 2000 &&
+        p.userRatingCount >= 50 &&
         p.rating >= 4.3
     )
     .slice(0, 10);
