@@ -58,49 +58,6 @@ function toAttraction(place: CachedPlace, isInsider: boolean) {
   };
 }
 
-router.get("/places/debug", async (req: Request, res: Response) => {
-  const city = ((req.query.city as string) || "Rome").trim();
-  const country = ((req.query.country as string) || "Italy").trim();
-  const mapsKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!mapsKey) { res.json({ mapsKeySet: false }); return; }
-
-  const coords = await geocodeCityCoords(city, country);
-  if (!coords) { res.json({ mapsKeySet: true, coords: null }); return; }
-
-  // Raw 50 km search — bypass cache to see what Places API actually returns
-  const raw50Res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": mapsKey,
-      "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount",
-    },
-    body: JSON.stringify({
-      includedTypes: ["tourist_attraction","museum","art_gallery","historical_landmark","cultural_landmark","monument","castle","church","mosque","hindu_temple","synagogue","national_park","park","beach","garden","botanical_garden","observation_deck","zoo","aquarium"],
-      maxResultCount: 20,
-      locationRestriction: { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 50000 } },
-      rankPreference: "POPULARITY",
-    }),
-  });
-  const raw50Data = raw50Res.ok ? (await raw50Res.json() as any) : { error: await raw50Res.text() };
-  const raw50Places: any[] = raw50Data.places ?? [];
-
-  const places = await getCityPlaces(city, country, coords);
-  const mainIds = new Set(places?.main.map((p) => p.placeId) ?? []);
-
-  res.json({
-    mapsKeySet: true,
-    coords,
-    mainCount: places?.main.length ?? 0,
-    insiderCount: places?.insider.length ?? 0,
-    raw50Count: raw50Places.length,
-    raw50NotInMain: raw50Places.filter((p: any) => !mainIds.has(p.id)).map((p: any) => ({
-      name: p.displayName?.text,
-      rating: p.rating,
-      reviews: p.userRatingCount,
-    })),
-  });
-});
 
 router.get("/places/attractions", async (req: Request, res: Response) => {
   const city = ((req.query.city as string) || "").trim();

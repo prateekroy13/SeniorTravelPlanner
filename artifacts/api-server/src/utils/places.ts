@@ -123,8 +123,25 @@ function normalizePlaces(raw: any[]): CachedPlace[] {
     }));
 }
 
-// Fetches the main attraction pool (15 km city core) and hidden gem
-// candidates (50 km radius, low review count) from Google Places.
+// Returns a point offset from (lat, lng) by distanceKm in the given bearing (degrees).
+function offsetCoords(
+  lat: number,
+  lng: number,
+  bearingDeg: number,
+  distanceKm: number
+): { lat: number; lng: number } {
+  const R = 6371;
+  const d = distanceKm / R;
+  const b = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lng1 = (lng * Math.PI) / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b));
+  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+  return { lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI };
+}
+
+// Fetches the main attraction pool (15 km city core) and insider picks from
+// four offset searches covering the 15–40 km outer ring around the city.
 // Caches both pools per city for 30 days.
 // Returns null if the API key is not configured.
 export async function getCityPlaces(
@@ -161,25 +178,36 @@ export async function getCityPlaces(
     };
   }
 
-  // Cache miss — run two parallel Nearby Searches
-  const [mainRaw, insiderRaw] = await Promise.all([
-    nearbySearch(coords.lat, coords.lng, 15_000, 20), // 15 km: city-centre famous sights
-    nearbySearch(coords.lat, coords.lng, 50_000, 20), // 50 km: wider region for hidden gems
+  // Cache miss — main pool + 4 outer-ring searches in parallel.
+  // The outer ring searches are offset 25 km N/E/S/W from the city centre, each
+  // with a 20 km radius. Combined they cover the ~5–45 km ring around the city
+  // and find places (day-trip towns, parks, outer attractions) that a city-centre
+  // search never surfaces because the famous central sites dominate by popularity.
+  const outerOffsets = [0, 90, 180, 270].map((b) =>
+    offsetCoords(coords.lat, coords.lng, b, 25)
+  );
+  const [mainRaw, ...outerRaws] = await Promise.all([
+    nearbySearch(coords.lat, coords.lng, 15_000, 20),
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 20_000, 10)),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
   const mainIds = new Set(mainPlaces.map((p) => p.placeId));
 
-  // Hidden gems: real, good quality, NOT already in main pool, low footfall
-  // Insider picks: quality attractions within 50km that aren't in the city-centre main pool.
-  // No upper review cap — the "not in main pool" exclusion already removes the mega-famous.
+  // Deduplicate outer-ring results then filter: not in main pool, quality ≥ 4.3
+  const seenInsider = new Set<string>();
+  const insiderRaw: any[] = [];
+  for (const batch of outerRaws) {
+    for (const p of batch) {
+      if (!seenInsider.has(p.id)) {
+        seenInsider.add(p.id);
+        insiderRaw.push(p);
+      }
+    }
+  }
+
   const insiderPlaces = normalizePlaces(insiderRaw)
-    .filter(
-      (p) =>
-        !mainIds.has(p.placeId) &&
-        p.userRatingCount >= 50 &&
-        p.rating >= 4.3
-    )
+    .filter((p) => !mainIds.has(p.placeId) && p.userRatingCount >= 50 && p.rating >= 4.3)
     .slice(0, 10);
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
