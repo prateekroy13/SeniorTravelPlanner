@@ -5,12 +5,9 @@ import { and, eq, gt } from "drizzle-orm";
 const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 // Used for the 15km main pool — broad, covers city-centre attractions of all kinds.
-// Religious subtypes (hindu_temple, mosque, church, synagogue) are intentionally
-// excluded: Google assigns these to every neighbourhood shrine/parish, so including
-// them floods Delhi/Istanbul/Rome with minor religious sites and crowds out Red Fort,
-// India Gate, Colosseum etc. Famous religious landmarks (Lotus Temple, Jama Masjid,
-// Notre-Dame) are already tagged tourist_attraction / historical_landmark / cultural_landmark
-// and will still appear through those types.
+// Religious subtypes are handled in a SEPARATE second search (see RELIGIOUS_TYPES below)
+// with a high review-count gate, so only major landmarks (Lotus Temple, Akshardham,
+// Stephansdom, Notre-Dame) make it in — not neighbourhood shrines.
 const ATTRACTION_TYPES = [
   "tourist_attraction",
   "museum",
@@ -28,6 +25,20 @@ const ATTRACTION_TYPES = [
   "zoo",
   "aquarium",
 ];
+
+// Searched separately with a 50k review threshold so only major religious landmarks
+// (Lotus Temple ~100k, Akshardham ~60k, Jama Masjid ~50k, Stephansdom ~150k) appear.
+const RELIGIOUS_TYPES = ["hindu_temple", "mosque", "church", "synagogue"];
+const RELIGIOUS_MIN_REVIEWS = 50_000;
+
+// Used to detect religious-only places in the hidden gems filter.
+// If a place is religious but NOT also a cultural landmark it's excluded —
+// this removes small temples near Delhi while keeping Melk Abbey
+// (tagged church + tourist_attraction).
+const RELIGIOUS_TYPES_SET = new Set(RELIGIOUS_TYPES);
+const CULTURAL_OVERRIDE_TYPES = new Set([
+  "tourist_attraction", "historical_landmark", "cultural_landmark",
+]);
 
 // Used for the outer-ring day-trip searches.
 // Deliberately narrow: only types that produce standalone destination landmarks
@@ -234,20 +245,27 @@ export async function getCityPlaces(
   const outerOffsets = [0, 45, 90, 135, 180, 225, 270, 315].map((b) =>
     offsetCoords(coords.lat, coords.lng, b, 60)
   );
-  const [mainRaw, ...outerRaws] = await Promise.all([
+  const [primaryRaw, religiousRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // POPULARITY ranking across the full 40km radius.
-    // DISTANCE was tried but the rural countryside is dense with tiny village
-    // churches (1–4 reviews) that exhaust all 20 slots within 3–5km of the
-    // offset centre, so Melk Abbey at 17km was never returned.
-    // POPULARITY surfaces the genuinely well-known landmarks (Melk: 29k reviews,
-    // 4.6★) that belong in the top-20 across the full circle.
-    // Post-API filters handle quality control: LOCAL_TYPES removes parks/gardens,
-    // userRatingCount≥1500 removes the tiny chapels, dist>35km removes suburbs.
+    // Second search for major religious landmarks only.
+    // We gate at RELIGIOUS_MIN_REVIEWS (50k) in post-processing so only
+    // genuinely famous sites (Lotus Temple, Akshardham, Stephansdom, Notre-Dame)
+    // appear — not neighbourhood shrines.
+    nearbySearch(coords.lat, coords.lng, 15_000, 20, RELIGIOUS_TYPES),
     ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "POPULARITY")),
   ]);
 
-  const mainPlaces = normalizePlaces(mainRaw);
+  const primaryPlaces = normalizePlaces(primaryRaw);
+  const primaryIds = new Set(primaryPlaces.map((p) => p.placeId));
+
+  // Keep only major religious landmarks not already in the primary results,
+  // sorted by review count so the most iconic appear first.
+  const religiousPlaces = normalizePlaces(religiousRaw)
+    .filter((p) => !primaryIds.has(p.placeId) && p.userRatingCount >= RELIGIOUS_MIN_REVIEWS)
+    .sort((a, b) => b.userRatingCount - a.userRatingCount);
+
+  // Primary results (API popularity order) first, then top major religious landmarks.
+  const mainPlaces = [...primaryPlaces, ...religiousPlaces].slice(0, 20);
   const mainIds = new Set(mainPlaces.map((p) => p.placeId));
 
   // Deduplicate outer-ring results by place ID.
@@ -275,13 +293,16 @@ export async function getCityPlaces(
       if (mainIds.has(p.placeId)) return false;
       if (p.userRatingCount < 5000) return false;
       if (p.rating < 4.3) return false;
-      // 35km minimum: genuine day trips start here. Suburban parks at 22km
-      // passed the old 20km threshold — this closes that gap.
       const d = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
       if (d < 35) return false;
-      // Reject anything whose own returned types signal a local attraction,
-      // even if tourist_attraction also appears in its type list.
       if (p.types.some((t) => LOCAL_TYPES.has(t))) return false;
+      // Exclude religious-only places (small temples, shrines, parish churches).
+      // Exception: keep if also tagged tourist_attraction/historical_landmark/
+      // cultural_landmark — this lets Melk Abbey (church + tourist_attraction)
+      // through while removing small temples near Delhi.
+      const isReligious = p.types.some((t) => RELIGIOUS_TYPES_SET.has(t));
+      const isCulturalLandmark = p.types.some((t) => CULTURAL_OVERRIDE_TYPES.has(t));
+      if (isReligious && !isCulturalLandmark) return false;
       return true;
     })
     .sort((a, b) => b.rating - a.rating || b.userRatingCount - a.userRatingCount)
