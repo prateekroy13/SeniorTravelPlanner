@@ -68,7 +68,8 @@ async function nearbySearch(
   lat: number,
   lng: number,
   radiusMeters: number,
-  maxCount: number
+  maxCount: number,
+  rankBy: "POPULARITY" | "DISTANCE" = "POPULARITY"
 ): Promise<any[]> {
   if (!MAPS_KEY) return [];
   try {
@@ -91,7 +92,7 @@ async function nearbySearch(
             radius: radiusMeters,
           },
         },
-        rankPreference: "POPULARITY",
+        rankPreference: rankBy,
       }),
     });
     if (!res.ok) {
@@ -210,7 +211,11 @@ export async function getCityPlaces(
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 10)),
+    // DISTANCE ranking spreads results across the full 40km circle rather than
+    // clustering around whichever sub-area is most globally popular.
+    // This ensures a town like Melk (23km from the western offset point) isn't
+    // pushed out by a cluster of popular places near the offset centre.
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, "DISTANCE")),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
@@ -237,13 +242,9 @@ export async function getCityPlaces(
       const dist = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
       return dist > 20;
     })
-    // Furthest from city centre first → day-trip towns (Melk, Bratislava)
-    // naturally outrank closer suburbs.
-    .sort((a, b) => {
-      const da = distanceKm(coords.lat, coords.lng, a.lat, a.lng);
-      const db = distanceKm(coords.lat, coords.lng, b.lat, b.lng);
-      return db - da;
-    })
+    // Best day-trip towns first: sort by rating desc, then review count desc.
+    // Melk Abbey (4.7★, 29k reviews) surfaces before a small park (4.3★, 300 reviews).
+    .sort((a, b) => b.rating - a.rating || b.userRatingCount - a.userRatingCount)
     .slice(0, 5);
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000);
