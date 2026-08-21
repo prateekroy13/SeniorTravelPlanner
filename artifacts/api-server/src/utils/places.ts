@@ -206,13 +206,16 @@ export async function getCityPlaces(
   // After dedup, we filter to places >20km from the city centre (inner suburbs
   // are already covered by the main pool) and sort furthest-first so genuine
   // day-trip destinations rank above closer suburbs.
-  const outerOffsets = [0, 90, 180, 270].map((b) =>
+  // 8 directions: N/NE/E/SE/S/SW/W/NW, each 60km offset + 40km radius.
+  // The 4 diagonal directions (45°/135°/225°/315°) eliminate the dead zones
+  // between cardinal searches — e.g. Chartres (SW of Paris) and Schneeberg
+  // (SW of Vienna) both fall outside N/S/E/W circles but inside the SW circle.
+  // 8 dirs × 20 results = 160 raw candidates, cached for 30 days.
+  const outerOffsets = [0, 45, 90, 135, 180, 225, 270, 315].map((b) =>
     offsetCoords(coords.lat, coords.lng, b, 60)
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // POPULARITY ranking with 20 results per direction (was 10 — Melk was position 11+).
-    // 4 directions × 20 = 80 raw candidates before dedup and quality filtering.
     ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20)),
   ]);
 
