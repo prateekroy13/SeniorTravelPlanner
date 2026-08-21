@@ -176,7 +176,7 @@ export async function getCityPlaces(
       (p) =>
         !mainIds.has(p.placeId) &&
         p.userRatingCount >= 20 &&
-        p.userRatingCount <= 500 &&
+        p.userRatingCount <= 2000 &&
         p.rating >= 4.3
     )
     .slice(0, 10);
