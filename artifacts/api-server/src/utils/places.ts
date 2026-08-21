@@ -270,7 +270,7 @@ export async function getCityPlaces(
   const insiderPlaces = normalizePlaces(insiderRaw)
     .filter((p) => {
       if (mainIds.has(p.placeId)) return false;
-      if (p.userRatingCount < 1500) return false;
+      if (p.userRatingCount < 5000) return false;
       if (p.rating < 4.3) return false;
       // 35km minimum: genuine day trips start here. Suburban parks at 22km
       // passed the old 20km threshold — this closes that gap.

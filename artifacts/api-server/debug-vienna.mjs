@@ -77,7 +77,7 @@ async function nearbySearch(lat, lng, radiusMeters, maxCount, types, rankBy) {
 function filterReason(p, mainIds, viennaLat, viennaLng) {
   if (!p.displayName?.text || !p.rating || !p.userRatingCount) return "missing-data";
   if (mainIds.has(p.id)) return "in-main-pool";
-  if (p.userRatingCount < 1500) return `low-reviews(${p.userRatingCount})`;
+  if (p.userRatingCount < 5000) return `low-reviews(${p.userRatingCount})`;
   if (p.rating < 4.3) return `low-rating(${p.rating})`;
   const d = distKm(viennaLat, viennaLng, p.location.latitude, p.location.longitude);
   if (d < 35) return `too-close(${d.toFixed(1)}km)`;
