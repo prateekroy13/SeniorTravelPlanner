@@ -5,6 +5,12 @@ import { and, eq, gt } from "drizzle-orm";
 const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 // Used for the 15km main pool — broad, covers city-centre attractions of all kinds.
+// Religious subtypes (hindu_temple, mosque, church, synagogue) are intentionally
+// excluded: Google assigns these to every neighbourhood shrine/parish, so including
+// them floods Delhi/Istanbul/Rome with minor religious sites and crowds out Red Fort,
+// India Gate, Colosseum etc. Famous religious landmarks (Lotus Temple, Jama Masjid,
+// Notre-Dame) are already tagged tourist_attraction / historical_landmark / cultural_landmark
+// and will still appear through those types.
 const ATTRACTION_TYPES = [
   "tourist_attraction",
   "museum",
@@ -13,10 +19,6 @@ const ATTRACTION_TYPES = [
   "cultural_landmark",
   "monument",
   "castle",
-  "church",
-  "mosque",
-  "hindu_temple",
-  "synagogue",
   "national_park",
   "park",
   "beach",
