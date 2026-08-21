@@ -481,7 +481,7 @@ function SwipeCard({
               {attraction.rating != null && (
                 <StatPill
                   icon="star"
-                  value={attraction.rating.toFixed(1)}
+                  value={`${attraction.rating.toFixed(1)}${attraction.userRatingCount ? ` (${(attraction.userRatingCount / 1000).toFixed(0)}k)` : ""}`}
                   label="Rating"
                   highlight
                 />

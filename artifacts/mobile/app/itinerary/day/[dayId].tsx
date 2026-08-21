@@ -21,6 +21,7 @@ export default function DayDetailScreen() {
     dayId: string;
     data: string;
     city?: string;
+    country?: string;
     itineraryId?: string;
   }>();
 
@@ -77,7 +78,7 @@ export default function DayDetailScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <DayDetail day={day} itineraryId={params.itineraryId} />
+        <DayDetail day={day} itineraryId={params.itineraryId} city={params.city} country={params.country} />
       </ScrollView>
     </View>
   );

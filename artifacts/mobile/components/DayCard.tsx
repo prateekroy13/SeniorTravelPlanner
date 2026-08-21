@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   ScrollView,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
+import { Image } from "expo-image";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { API_BASE_URL } from "@/constants/api";
@@ -43,15 +45,6 @@ interface TransportOption {
   accessibilityNotes?: string;
 }
 
-interface SideTrip {
-  name: string;
-  description: string;
-  distance: string;
-  extraSteps: number;
-  extraTime: string;
-  estimatedCost: string;
-}
-
 interface DayPlan {
   dayNumber: number;
   theme: string;
@@ -66,7 +59,6 @@ interface DayPlan {
   currency: string;
   restaurants: Restaurant[];
   transportOptions: TransportOption[];
-  sideTrips: SideTrip[];
   crowdAvoidanceTip?: string;
   weatherNote?: string;
 }
@@ -151,10 +143,44 @@ export function DayCard({ day, onPress }: DayCardProps) {
 interface DayDetailProps {
   day: DayPlan;
   itineraryId?: string;
+  city?: string;
+  country?: string;
 }
 
-export function DayDetail({ day, itineraryId }: DayDetailProps) {
-  const [activeTab, setActiveTab] = useState<"plan" | "food" | "transport" | "sidetrips">("plan");
+export function DayDetail({ day, itineraryId, city, country }: DayDetailProps) {
+  const [activeTab, setActiveTab] = useState<"plan" | "food" | "transport">("plan");
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+
+  const allItems = [
+    ...day.morning, ...day.afternoon, ...day.evening,
+    ...day.restaurants,
+  ];
+
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      const results: Record<string, string> = {};
+      await Promise.all(
+        allItems.map(async (item) => {
+          const query = encodeURIComponent(`${item.name} ${city || ""}`);
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/maps/place-photo?query=${query}&width=400`);
+            if (res.ok) {
+              const json = await res.json();
+              if (json.url) results[item.name] = json.url;
+            }
+          } catch {}
+        })
+      );
+      setPhotos(results);
+    };
+    fetchPhotos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day.dayNumber]);
+
+  const openMaps = (name: string) => {
+    const q = encodeURIComponent(`${name}${city ? ` ${city}` : ""}${country ? ` ${country}` : ""}`);
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
+  };
 
   const makeReportHandler = (itemName: string, itemType: "activity" | "restaurant") =>
     (issueType: string) => {
@@ -190,14 +216,14 @@ export function DayDetail({ day, itineraryId }: DayDetailProps) {
         style={styles.tabScroll}
         contentContainerStyle={styles.tabRow}
       >
-        {(["plan", "food", "transport", "sidetrips"] as const).map((tab) => (
+        {(["plan", "food", "transport"] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
           >
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === "plan" ? "Daily Plan" : tab === "food" ? "Dining" : tab === "transport" ? "Transport" : "Side Trips"}
+              {tab === "plan" ? "Daily Plan" : tab === "food" ? "Dining" : "Transport"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -232,7 +258,12 @@ export function DayDetail({ day, itineraryId }: DayDetailProps) {
                 </View>
                 {activities.map((act, i) => (
                   <React.Fragment key={i}>
-                    <ActivityItem activity={act} onReport={makeReportHandler(act.name, "activity")} />
+                    <ActivityItem
+                      activity={act}
+                      photoUrl={photos[act.name]}
+                      onReport={makeReportHandler(act.name, "activity")}
+                      onOpenMaps={() => openMaps(act.name)}
+                    />
                     {act.travelMinutesToNext != null && act.travelMinutesToNext > 0 && (
                       <View style={styles.travelConnector}>
                         <View style={styles.travelLine} />
@@ -256,7 +287,14 @@ export function DayDetail({ day, itineraryId }: DayDetailProps) {
       {activeTab === "food" && (
         <View style={styles.section}>
           {day.restaurants.map((r, i) => (
-            <RestaurantItem key={i} restaurant={r} index={i} onReport={makeReportHandler(r.name, "restaurant")} />
+            <RestaurantItem
+              key={i}
+              restaurant={r}
+              index={i}
+              photoUrl={photos[r.name]}
+              onReport={makeReportHandler(r.name, "restaurant")}
+              onOpenMaps={() => openMaps(r.name)}
+            />
           ))}
         </View>
       )}
@@ -266,16 +304,6 @@ export function DayDetail({ day, itineraryId }: DayDetailProps) {
           {day.transportOptions.map((t, i) => (
             <TransportItem key={i} transport={t} />
           ))}
-        </View>
-      )}
-
-      {activeTab === "sidetrips" && (
-        <View style={styles.section}>
-          {day.sideTrips.length > 0 ? (
-            day.sideTrips.map((s, i) => <SideTripItem key={i} trip={s} />)
-          ) : (
-            <Text style={styles.emptyText}>No side trips for this day.</Text>
-          )}
         </View>
       )}
     </View>
@@ -317,7 +345,17 @@ const CROWD_LABELS: Record<string, string> = {
   high: "Busy",
 };
 
-function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (issueType: string) => void }) {
+function ActivityItem({
+  activity,
+  photoUrl,
+  onReport,
+  onOpenMaps,
+}: {
+  activity: Activity;
+  photoUrl?: string;
+  onReport?: (issueType: string) => void;
+  onOpenMaps?: () => void;
+}) {
   const handleReportPress = () => {
     Alert.alert(`Report: ${activity.name}`, "What issue did you find?", [
       { text: "Closed / doesn't exist", onPress: () => onReport?.("doesnt_exist") },
@@ -353,6 +391,13 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
         <View style={styles.activityLine} />
       </View>
       <View style={styles.activityContent}>
+        {photoUrl && (
+          <Image
+            source={{ uri: photoUrl }}
+            style={styles.activityPhoto}
+            contentFit="cover"
+          />
+        )}
         <View style={styles.activityHeader}>
           <Text style={styles.activityName}>{activity.name}</Text>
           {isHiddenGem && (
@@ -412,18 +457,38 @@ function ActivityItem({ activity, onReport }: { activity: Activity; onReport?: (
             <Text style={styles.tipInlineText}>{cleanTips}</Text>
           </View>
         )}
-        {onReport && (
-          <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
-            <Feather name="flag" size={11} color={Colors.light.textTertiary} />
-            <Text style={styles.reportRowText}>Report an issue</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.activityActions}>
+          {onOpenMaps && (
+            <TouchableOpacity onPress={onOpenMaps} style={styles.mapsBtn}>
+              <Feather name="map-pin" size={11} color={Colors.light.primary} />
+              <Text style={styles.mapsBtnText}>Open in Maps</Text>
+            </TouchableOpacity>
+          )}
+          {onReport && (
+            <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
+              <Feather name="flag" size={11} color={Colors.light.textTertiary} />
+              <Text style={styles.reportRowText}>Report</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
 }
 
-function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restaurant; index: number; onReport?: (issueType: string) => void }) {
+function RestaurantItem({
+  restaurant,
+  index,
+  photoUrl,
+  onReport,
+  onOpenMaps,
+}: {
+  restaurant: Restaurant;
+  index: number;
+  photoUrl?: string;
+  onReport?: (issueType: string) => void;
+  onOpenMaps?: () => void;
+}) {
   const labels = ["Lunch", "Dinner", "Snack"];
   const handleReportPress = () => {
     Alert.alert(`Report: ${restaurant.name}`, "What issue did you find?", [
@@ -437,6 +502,13 @@ function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restauran
 
   return (
     <View style={styles.restaurantItem}>
+      {photoUrl && (
+        <Image
+          source={{ uri: photoUrl }}
+          style={styles.restaurantPhoto}
+          contentFit="cover"
+        />
+      )}
       <View style={styles.restaurantHeader}>
         <View style={styles.mealBadge}>
           <Text style={styles.mealBadgeText}>{labels[index] || `Option ${index + 1}`}</Text>
@@ -462,12 +534,20 @@ function RestaurantItem({ restaurant, index, onReport }: { restaurant: Restauran
           <Text style={styles.nearbyText}>Near {restaurant.nearbyAttraction}</Text>
         </View>
       )}
-      {onReport && (
-        <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
-          <Feather name="flag" size={11} color={Colors.light.textTertiary} />
-          <Text style={styles.reportRowText}>Report an issue</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.activityActions}>
+        {onOpenMaps && (
+          <TouchableOpacity onPress={onOpenMaps} style={styles.mapsBtn}>
+            <Feather name="map-pin" size={11} color={Colors.light.primary} />
+            <Text style={styles.mapsBtnText}>Open in Maps</Text>
+          </TouchableOpacity>
+        )}
+        {onReport && (
+          <TouchableOpacity onPress={handleReportPress} style={styles.reportRow}>
+            <Feather name="flag" size={11} color={Colors.light.textTertiary} />
+            <Text style={styles.reportRowText}>Report</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -506,33 +586,6 @@ function TransportItem({ transport }: { transport: TransportOption }) {
   );
 }
 
-function SideTripItem({ trip }: { trip: SideTrip }) {
-  return (
-    <View style={styles.sideTripItem}>
-      <View style={styles.sideTripHeader}>
-        <Text style={styles.sideTripName}>{trip.name}</Text>
-        <Text style={styles.sideTripCost}>{trip.estimatedCost}</Text>
-      </View>
-      <Text style={styles.sideTripDesc} numberOfLines={2}>
-        {trip.description}
-      </Text>
-      <View style={styles.sideTripMeta}>
-        <View style={styles.metaItem}>
-          <Feather name="navigation" size={11} color={Colors.light.textTertiary} />
-          <Text style={styles.metaText}>{trip.distance}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Feather name="clock" size={11} color={Colors.light.textTertiary} />
-          <Text style={styles.metaText}>{trip.extraTime}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <MaterialCommunityIcons name="walk" size={12} color={Colors.light.textTertiary} />
-          <Text style={styles.metaText}>+{trip.extraSteps.toLocaleString()} steps</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   card: {
@@ -1056,46 +1109,36 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.light.primary,
   },
-  sideTripItem: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: 14,
-    padding: 14,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: Colors.light.borderLight,
+  activityPhoto: {
+    width: "100%",
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 8,
   },
-  sideTripHeader: {
+  restaurantPhoto: {
+    width: "100%",
+    height: 120,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  activityActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+    marginTop: 6,
   },
-  sideTripName: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.light.text,
-    flex: 1,
+  mapsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: Colors.light.primaryPale,
   },
-  sideTripCost: {
-    fontSize: 13,
+  mapsBtnText: {
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: Colors.light.primary,
-  },
-  sideTripDesc: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    lineHeight: 18,
-  },
-  sideTripMeta: {
-    flexDirection: "row",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textSecondary,
-    textAlign: "center",
-    marginTop: 20,
   },
 });

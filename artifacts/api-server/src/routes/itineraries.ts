@@ -60,7 +60,6 @@ Key requirements:
 - 1-2 rest stops per half-day (cafes, parks)
 - Public transport options with accessibility notes
 - 3 restaurants per day — price tier and budget estimates must match the traveler's stated Budget level exactly (budget = affordable local spots, mid = mid-range bistros and trattorias, luxury = upscale/fine dining)
-- 1-2 nearby side trips per day
 - Keep descriptions concise (max 80 words each)
 
 IMPORTANT: Respond ONLY with valid, complete JSON. No markdown, no truncation.`;
@@ -176,16 +175,6 @@ Return ONLY a valid JSON object (no markdown) with this exact structure:
           "accessibilityNotes": "string"
         }
       ],
-      "sideTrips": [
-        {
-          "name": "string",
-          "description": "string (max 40 words)",
-          "distance": "string",
-          "extraSteps": number,
-          "extraTime": "string",
-          "estimatedCost": "string"
-        }
-      ],
       "crowdAvoidanceTip": "string",
       "weatherNote": "string"
     }
@@ -292,7 +281,7 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
                 items: {
                   type: "object",
                   additionalProperties: false,
-                  required: ["dayNumber","theme","morning","afternoon","evening","totalSteps","totalWalkingMinutes","activeHours","estimatedCostLow","estimatedCostHigh","currency","restaurants","transportOptions","sideTrips","crowdAvoidanceTip","weatherNote"],
+                  required: ["dayNumber","theme","morning","afternoon","evening","totalSteps","totalWalkingMinutes","activeHours","estimatedCostLow","estimatedCostHigh","currency","restaurants","transportOptions","crowdAvoidanceTip","weatherNote"],
                   properties: {
                     dayNumber: { type: "number" },
                     theme: { type: "string" },
@@ -337,22 +326,6 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
                         }
                       }
                     },
-                    sideTrips: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        additionalProperties: false,
-                        required: ["name","description","distance","extraSteps","extraTime","estimatedCost"],
-                        properties: {
-                          name: { type: "string" },
-                          description: { type: "string" },
-                          distance: { type: "string" },
-                          extraSteps: { type: "number" },
-                          extraTime: { type: "string" },
-                          estimatedCost: { type: "string" }
-                        }
-                      }
-                    }
                   }
                 }
               }

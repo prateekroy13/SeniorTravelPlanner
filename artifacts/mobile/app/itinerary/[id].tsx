@@ -509,6 +509,7 @@ export default function ItineraryScreen() {
                       dayId: day.dayNumber,
                       data: JSON.stringify(day),
                       city: itinerary.city,
+                      country: itinerary.country,
                       itineraryId: params.id || savedId || "",
                     },
                   })

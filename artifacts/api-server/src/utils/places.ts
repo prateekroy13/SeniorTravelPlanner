@@ -97,7 +97,8 @@ async function nearbySearch(
         "X-Goog-Api-Key": MAPS_KEY,
         "X-Goog-FieldMask":
           "places.id,places.displayName,places.rating,places.userRatingCount," +
-          "places.location,places.formattedAddress,places.types,places.regularOpeningHours",
+          "places.location,places.formattedAddress,places.types,places.regularOpeningHours," +
+          "places.editorialSummary",
       },
       body: JSON.stringify({
         includedTypes: types,
@@ -136,8 +137,8 @@ function normalizePlaces(raw: any[]): CachedPlace[] {
       lng: p.location?.longitude ?? 0,
       formattedAddress: (p.formattedAddress ?? "") as string,
       types: (p.types ?? []) as string[],
-      // Compact hours: Mon–Fri line is enough context for the LLM
       openingHours: p.regularOpeningHours?.weekdayDescriptions?.[0] as string | undefined,
+      description: (p.editorialSummary?.text ?? undefined) as string | undefined,
     }));
 }
 

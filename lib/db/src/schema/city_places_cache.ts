@@ -26,4 +26,5 @@ export type CachedPlace = {
   formattedAddress: string;
   types: string[];
   openingHours?: string;
+  description?: string;
 };

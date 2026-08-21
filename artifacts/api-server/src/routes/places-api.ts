@@ -40,6 +40,34 @@ function getMeta(types: string[]): { category: string; emoji: string; gradient: 
   return DEFAULT_META;
 }
 
+const TYPE_DESC: Record<string, string> = {
+  castle:              "Historic castle",
+  church:              "Historic church",
+  museum:              "Museum",
+  national_park:       "National park",
+  historical_landmark: "Historical landmark",
+  cultural_landmark:   "Cultural landmark",
+  monument:            "Historic monument",
+  art_gallery:         "Art gallery",
+  mosque:              "Historic mosque",
+  hindu_temple:        "Hindu temple",
+  synagogue:           "Historic synagogue",
+  beach:               "Beach",
+  garden:              "Garden",
+  botanical_garden:    "Botanical garden",
+  observation_deck:    "Scenic viewpoint",
+  zoo:                 "Zoo",
+  aquarium:            "Aquarium",
+  tourist_attraction:  "Popular attraction",
+};
+
+function getTypeDescription(types: string[]): string {
+  for (const t of types) {
+    if (TYPE_DESC[t]) return TYPE_DESC[t];
+  }
+  return "Popular attraction";
+}
+
 function toAttraction(place: CachedPlace, isInsider: boolean) {
   const { category, emoji, gradient } = getMeta(place.types);
   return {
@@ -48,7 +76,7 @@ function toAttraction(place: CachedPlace, isInsider: boolean) {
     category,
     emoji,
     gradient,
-    description: `★${place.rating.toFixed(1)} · ${place.userRatingCount.toLocaleString()} reviews`,
+    description: place.description || getTypeDescription(place.types),
     seniorScore: Math.round(place.rating * 20),
     walkingMinutes: 0,
     steps: 0,
