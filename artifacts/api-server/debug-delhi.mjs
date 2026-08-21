@@ -1,6 +1,14 @@
 // node debug-delhi.mjs
 // Full audit: shows every filter step and why targets are missing.
-import "dotenv/config";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+try {
+  const env = readFileSync(resolve(process.cwd(), ".env"), "utf8");
+  for (const line of env.split("\n")) {
+    const [k, ...v] = line.split("=");
+    if (k && v.length) process.env[k.trim()] = v.join("=").trim();
+  }
+} catch {}
 
 const KEY = process.env.GOOGLE_MAPS_API_KEY;
 const LAT = 28.6139, LNG = 77.2090;
