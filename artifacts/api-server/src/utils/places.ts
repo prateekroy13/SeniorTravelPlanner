@@ -4,8 +4,7 @@ import { and, eq, gt } from "drizzle-orm";
 
 const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-// Historical landmarks, architecture, viewpoints, nature, monuments, famous sights.
-// Explicitly excludes food/drink types (restaurant, cafe, bakery, bar).
+// Used for the 15km main pool — broad, covers city-centre attractions of all kinds.
 const ATTRACTION_TYPES = [
   "tourist_attraction",
   "museum",
@@ -26,6 +25,23 @@ const ATTRACTION_TYPES = [
   "observation_deck",
   "zoo",
   "aquarium",
+];
+
+// Used for the outer-ring day-trip searches.
+// Deliberately narrow: only types that produce standalone destination landmarks
+// (abbeys, castles, cathedrals, national parks, iconic museums) that justify
+// travelling to a different town for the day.
+// Excluded intentionally: park, garden, beach, observation_deck, zoo, aquarium,
+// art_gallery, monument, mosque, hindu_temple, synagogue — these are overwhelmingly
+// local attractions, not day-trip destinations.
+const DAY_TRIP_TYPES = [
+  "tourist_attraction",
+  "historical_landmark",
+  "cultural_landmark",
+  "castle",
+  "church",
+  "national_park",
+  "museum",
 ];
 
 const CITY_TYPES = new Set([
@@ -69,7 +85,7 @@ async function nearbySearch(
   lng: number,
   radiusMeters: number,
   maxCount: number,
-  rankBy: "POPULARITY" | "DISTANCE" = "POPULARITY"
+  types: string[] = ATTRACTION_TYPES
 ): Promise<any[]> {
   if (!MAPS_KEY) return [];
   try {
@@ -83,7 +99,7 @@ async function nearbySearch(
           "places.location,places.formattedAddress,places.types,places.regularOpeningHours",
       },
       body: JSON.stringify({
-        includedTypes: ATTRACTION_TYPES,
+        includedTypes: types,
         maxResultCount: maxCount,
         languageCode: "en",
         locationRestriction: {
@@ -92,7 +108,7 @@ async function nearbySearch(
             radius: radiusMeters,
           },
         },
-        rankPreference: rankBy,
+        rankPreference: "POPULARITY",
       }),
     });
     if (!res.ok) {
@@ -216,7 +232,7 @@ export async function getCityPlaces(
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20)),
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES)),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
@@ -237,7 +253,7 @@ export async function getCityPlaces(
   const insiderPlaces = normalizePlaces(insiderRaw)
     .filter((p) => {
       if (mainIds.has(p.placeId)) return false;
-      if (p.userRatingCount < 200) return false;
+      if (p.userRatingCount < 1500) return false;
       if (p.rating < 4.3) return false;
       // Must be genuinely outside the city core — inner suburbs excluded.
       const dist = distanceKm(coords.lat, coords.lng, p.lat, p.lng);
