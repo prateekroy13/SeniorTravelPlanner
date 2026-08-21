@@ -13,9 +13,7 @@ const ATTRACTION_TYPES = [
   "historical_landmark",
   "cultural_landmark",
   "monument",
-  "ruins",
   "castle",
-  "palace",
   "church",
   "mosque",
   "hindu_temple",
@@ -26,10 +24,8 @@ const ATTRACTION_TYPES = [
   "garden",
   "botanical_garden",
   "observation_deck",
-  "scenic_viewpoint",
   "zoo",
   "aquarium",
-  "lighthouse",
 ];
 
 const CITY_TYPES = new Set([
