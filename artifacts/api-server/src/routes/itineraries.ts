@@ -238,8 +238,8 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 16000,
+      model: "gpt-4.1",
+      max_completion_tokens: 32000,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
@@ -392,7 +392,7 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
         days,
         travelMonth,
         promptVersion: PROMPT_VERSION,
-        model: "gpt-4o",
+        model: "gpt-4.1",
         tokensIn,
         tokensOut,
         estimatedCostUsd:
