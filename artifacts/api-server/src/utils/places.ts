@@ -233,12 +233,15 @@ export async function getCityPlaces(
   );
   const [mainRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // DISTANCE ranking: returns the 20 nearest DAY_TRIP_TYPES attractions to
-    // each offset centre, spreading results across the full 40km circle.
-    // POPULARITY was clustering around whichever sub-town sits closest to the
-    // offset centre (e.g. St. Pölten dominates the Vienna W-circle, pushing
-    // Melk — 17km further — out of the top 20).
-    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "DISTANCE")),
+    // POPULARITY ranking across the full 40km radius.
+    // DISTANCE was tried but the rural countryside is dense with tiny village
+    // churches (1–4 reviews) that exhaust all 20 slots within 3–5km of the
+    // offset centre, so Melk Abbey at 17km was never returned.
+    // POPULARITY surfaces the genuinely well-known landmarks (Melk: 29k reviews,
+    // 4.6★) that belong in the top-20 across the full circle.
+    // Post-API filters handle quality control: LOCAL_TYPES removes parks/gardens,
+    // userRatingCount≥1500 removes the tiny chapels, dist>35km removes suburbs.
+    ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "POPULARITY")),
   ]);
 
   const mainPlaces = normalizePlaces(mainRaw);
