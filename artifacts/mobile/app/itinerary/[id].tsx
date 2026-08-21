@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,10 +17,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import Colors from "@/constants/colors";
+import { API_BASE_URL } from "@/constants/api";
 import { DayCard } from "@/components/DayCard";
 import { useSavedItineraries } from "@/context/SavedItinerariesContext";
 
@@ -40,6 +42,7 @@ export default function ItineraryScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [heroPhotoUrl, setHeroPhotoUrl] = useState<string | null>(null);
 
   let itinerary: any = null;
   try {
@@ -371,6 +374,15 @@ export default function ItineraryScreen() {
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
+  useEffect(() => {
+    if (!itinerary?.city) return;
+    const query = encodeURIComponent(`${itinerary.city} ${itinerary.country || ""}`);
+    fetch(`${API_BASE_URL}/api/maps/place-photo?query=${query}&width=800`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => { if (json?.url) setHeroPhotoUrl(json.url); })
+      .catch(() => {});
+  }, [itinerary?.city]);
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -381,10 +393,24 @@ export default function ItineraryScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-          style={[styles.hero, { paddingTop: topPadding + 12 }]}
-        >
+        <View style={[styles.hero, { paddingTop: topPadding + 12 }]}>
+          {heroPhotoUrl ? (
+            <Image
+              source={{ uri: heroPhotoUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {/* Dark gradient overlay keeps text readable over any photo */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.72)"]}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.heroActions}>
             <TouchableOpacity onPress={() => router.back()} style={styles.actionBtn}>
               <Feather name="arrow-left" size={20} color="#fff" />
@@ -436,7 +462,7 @@ export default function ItineraryScreen() {
               </View>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.body}>
           {isAlreadySaved && (
@@ -456,16 +482,6 @@ export default function ItineraryScreen() {
                 label="Est. Total"
                 value={`${itinerary.currency}${itinerary.totalEstimatedCostLow}–${itinerary.totalEstimatedCostHigh}`}
               />
-              {itinerary.seniorFriendlyNotes && (
-                <View style={styles.seniorNote}>
-                  <MaterialCommunityIcons
-                    name="wheelchair-accessibility"
-                    size={14}
-                    color={Colors.light.primary}
-                  />
-                  <Text style={styles.seniorNoteText}>{itinerary.seniorFriendlyNotes}</Text>
-                </View>
-              )}
             </View>
 
             {itinerary.weatherInfo && (
@@ -716,6 +732,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 28,
     gap: 16,
+    overflow: "hidden",
   },
   heroActions: {
     flexDirection: "row",
