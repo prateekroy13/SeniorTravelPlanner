@@ -62,6 +62,19 @@ function toAttraction(place: CachedPlace, isInsider: boolean) {
   };
 }
 
+router.get("/places/debug", async (req: Request, res: Response) => {
+  const mapsKey = process.env.GOOGLE_MAPS_API_KEY;
+  const coords = mapsKey ? await geocodeCityCoords("Rome", "Italy") : null;
+  const places = coords ? await getCityPlaces("Rome", "Italy", coords) : null;
+  res.json({
+    mapsKeySet: !!mapsKey,
+    coords,
+    mainCount: places?.main.length ?? null,
+    insiderCount: places?.insider.length ?? null,
+    sampleMain: places?.main.slice(0, 2).map((p) => p.name) ?? null,
+  });
+});
+
 router.get("/places/attractions", async (req: Request, res: Response) => {
   const city = ((req.query.city as string) || "").trim();
   const country = ((req.query.country as string) || "").trim();
