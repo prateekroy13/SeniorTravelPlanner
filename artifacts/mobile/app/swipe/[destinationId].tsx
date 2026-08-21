@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -32,6 +32,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = Math.min(SCREEN_W - 48, 360);
 const CARD_H = Math.min(SCREEN_H * 0.62, 520);
 const SWIPE_THRESHOLD = SCREEN_W * 0.28;
+const FALLBACK_GRADIENT: [string, string] = ["#374151", "#1F2937"];
 
 interface Attraction {
   id: string;
@@ -43,9 +44,33 @@ interface Attraction {
   walkingMinutes: number;
   steps: number;
   gradient: [string, string];
+  // Places-based extras (absent for hardcoded fallback data)
+  isInsider?: boolean;
+  rating?: number;
+  userRatingCount?: number;
 }
 
-async function fetchAttractions(destinationId: string): Promise<Attraction[]> {
+// Try Places-based endpoint first (real data + hidden gems).
+// If it returns empty or errors, fall back to hardcoded destination data.
+async function fetchAttractions(
+  city: string,
+  country: string,
+  destinationId: string
+): Promise<Attraction[]> {
+  if (city && country) {
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/places/attractions?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}`
+      );
+      if (res.ok) {
+        const data: Attraction[] = await res.json();
+        if (data.length > 0) return data;
+      }
+    } catch {}
+  }
+
+  // Fallback: hardcoded curated data (always works for the 14 known cities)
+  if (!destinationId) return [];
   const res = await fetch(`${BASE_URL}/api/destinations/${destinationId}/attractions`);
   if (!res.ok) throw new Error("Failed to fetch attractions");
   return res.json();
@@ -65,9 +90,9 @@ export default function SwipeScreen() {
   const [attractionPhotos, setAttractionPhotos] = useState<Record<string, string>>({});
 
   const { data: attractions = [], isLoading, isError } = useQuery({
-    queryKey: ["attractions", destinationId],
-    queryFn: () => fetchAttractions(destinationId!),
-    enabled: !!destinationId,
+    queryKey: ["attractions", city, country],
+    queryFn: () => fetchAttractions(city || "", country || "", destinationId || ""),
+    enabled: !!(city && country) || !!destinationId,
   });
 
   // Fetch a real Google Places photo for each attraction as soon as the list loads
@@ -238,7 +263,7 @@ export default function SwipeScreen() {
               </View>
             ) : (
               <LinearGradient
-                colors={nextCard.gradient}
+                colors={nextCard.gradient ?? FALLBACK_GRADIENT}
                 style={styles.behindCardGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -346,6 +371,8 @@ function SwipeCard({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], "clamp"),
   }));
 
+  const cardGradient = attraction.gradient ?? FALLBACK_GRADIENT;
+
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, cardStyle]}>
@@ -358,7 +385,7 @@ function SwipeCard({
             />
           ) : (
             <LinearGradient
-              colors={attraction.gradient}
+              colors={cardGradient}
               style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -390,16 +417,40 @@ function SwipeCard({
               <Text style={styles.cardEmoji}>{attraction.emoji}</Text>
             </View>
 
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{attraction.category}</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{attraction.category}</Text>
+              </View>
+              {attraction.isInsider && (
+                <View style={styles.gemBadge}>
+                  <MaterialCommunityIcons name="diamond" size={10} color="#A78BFA" />
+                  <Text style={styles.gemBadgeText}>Hidden Gem</Text>
+                </View>
+              )}
             </View>
 
             <Text style={styles.cardName}>{attraction.name}</Text>
             <Text style={styles.cardDesc}>{attraction.description}</Text>
 
             <View style={styles.statsRow}>
-              <StatPill icon="clock" value={`${attraction.walkingMinutes}m`} label="Walk" />
-              <StatPill icon="map-pin" value={attraction.steps.toLocaleString()} label="Steps" />
+              {(attraction.walkingMinutes ?? 0) > 0 && (
+                <StatPill icon="clock" value={`${attraction.walkingMinutes}m`} label="Walk" />
+              )}
+              {(attraction.steps ?? 0) > 0 && (
+                <StatPill
+                  icon="map-pin"
+                  value={(attraction.steps ?? 0).toLocaleString()}
+                  label="Steps"
+                />
+              )}
+              {attraction.rating != null && (
+                <StatPill
+                  icon="star"
+                  value={attraction.rating.toFixed(1)}
+                  label="Rating"
+                  highlight
+                />
+              )}
             </View>
           </View>
 
@@ -471,14 +522,22 @@ function ResultScreen({
             {liked.map((attr) => (
               <View key={attr.id} style={resultStyles.likedRow}>
                 <LinearGradient
-                  colors={attr.gradient}
+                  colors={attr.gradient ?? FALLBACK_GRADIENT}
                   style={resultStyles.likedSwatch}
                 >
                   <Text style={resultStyles.likedEmoji}>{attr.emoji}</Text>
                 </LinearGradient>
                 <View style={resultStyles.likedInfo}>
                   <Text style={resultStyles.likedName} numberOfLines={1}>{attr.name}</Text>
-                  <Text style={resultStyles.likedCat}>{attr.category}</Text>
+                  <View style={resultStyles.likedMeta}>
+                    <Text style={resultStyles.likedCat}>{attr.category}</Text>
+                    {attr.isInsider && (
+                      <View style={resultStyles.gemChip}>
+                        <MaterialCommunityIcons name="diamond" size={9} color="#A78BFA" />
+                        <Text style={resultStyles.gemChipText}>Hidden Gem</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <Feather name="heart" size={14} color="#FF6B9D" />
               </View>
@@ -713,6 +772,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   cardEmoji: { fontSize: 34 },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
   categoryBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.18)",
@@ -724,6 +789,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     color: "rgba(255,255,255,0.9)",
+  },
+  gemBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: "rgba(167,139,250,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.4)",
+  },
+  gemBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#A78BFA",
   },
   cardName: {
     fontSize: 24,
@@ -867,16 +948,38 @@ const resultStyles = StyleSheet.create({
     justifyContent: "center",
   },
   likedEmoji: { fontSize: 20 },
-  likedInfo: { flex: 1, gap: 2 },
+  likedInfo: { flex: 1, gap: 3 },
   likedName: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
   },
+  likedMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
   likedCat: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.45)",
+  },
+  gemChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "rgba(167,139,250,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.35)",
+  },
+  gemChipText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "#A78BFA",
   },
   planBtn: {
     borderRadius: 16,

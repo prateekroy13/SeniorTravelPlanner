@@ -6,6 +6,7 @@ import sparksRouter from "./sparks";
 import authRouter from "./auth";
 import mapsRouter from "./maps";
 import reportsRouter from "./reports";
+import placesApiRouter from "./places-api";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(sparksRouter);
 router.use(authRouter);
 router.use(mapsRouter);
 router.use(reportsRouter);
+router.use(placesApiRouter);
 
 export default router;
