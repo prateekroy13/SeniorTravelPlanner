@@ -247,25 +247,39 @@ export async function getCityPlaces(
   );
   const [primaryRaw, religiousRaw, ...outerRaws] = await Promise.all([
     nearbySearch(coords.lat, coords.lng, 15_000, 20),
-    // Second search for major religious landmarks only.
-    // We gate at RELIGIOUS_MIN_REVIEWS (50k) in post-processing so only
-    // genuinely famous sites (Lotus Temple, Akshardham, Stephansdom, Notre-Dame)
-    // appear — not neighbourhood shrines.
+    // Second search dedicated to religious types. We merge and filter in
+    // post-processing so only major landmarks (Lotus Temple ~100k, Akshardham ~60k,
+    // Stephansdom ~150k) survive — not neighbourhood shrines.
     nearbySearch(coords.lat, coords.lng, 15_000, 20, RELIGIOUS_TYPES),
     ...outerOffsets.map((o) => nearbySearch(o.lat, o.lng, 40_000, 20, DAY_TRIP_TYPES, "POPULARITY")),
   ]);
 
-  const primaryPlaces = normalizePlaces(primaryRaw);
-  const primaryIds = new Set(primaryPlaces.map((p) => p.placeId));
+  // Merge both raw batches and deduplicate by placeId BEFORE normalizing,
+  // so the slice(0,20) below operates on the full combined candidate set.
+  const seenMain = new Set<string>();
+  const mergedMainRaw: any[] = [];
+  for (const p of [...primaryRaw, ...religiousRaw]) {
+    if (p.id && !seenMain.has(p.id)) {
+      seenMain.add(p.id);
+      mergedMainRaw.push(p);
+    }
+  }
 
-  // Keep only major religious landmarks not already in the primary results,
-  // sorted by review count so the most iconic appear first.
-  const religiousPlaces = normalizePlaces(religiousRaw)
-    .filter((p) => !primaryIds.has(p.placeId) && p.userRatingCount >= RELIGIOUS_MIN_REVIEWS)
-    .sort((a, b) => b.userRatingCount - a.userRatingCount);
+  const mainPlaces = normalizePlaces(mergedMainRaw)
+    .filter((p) => {
+      // Require 10k+ reviews for all main-pool places.
+      if (p.userRatingCount < 10_000) return false;
+      // Religious-only places (no tourist_attraction / historical_landmark tag)
+      // need 50k+ reviews — Lotus Temple (~100k) and Akshardham (~60k) pass;
+      // neighbourhood shrines don't.
+      const isReligious = p.types.some((t) => RELIGIOUS_TYPES_SET.has(t));
+      const isCultural = p.types.some((t) => CULTURAL_OVERRIDE_TYPES.has(t));
+      if (isReligious && !isCultural && p.userRatingCount < RELIGIOUS_MIN_REVIEWS) return false;
+      return true;
+    })
+    .sort((a, b) => b.userRatingCount - a.userRatingCount)
+    .slice(0, 20);
 
-  // Primary results (API popularity order) first, then top major religious landmarks.
-  const mainPlaces = [...primaryPlaces, ...religiousPlaces].slice(0, 20);
   const mainIds = new Set(mainPlaces.map((p) => p.placeId));
 
   // Deduplicate outer-ring results by place ID.
