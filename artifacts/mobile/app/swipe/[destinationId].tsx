@@ -78,22 +78,31 @@ async function fetchAttractions(
 
 export default function SwipeScreen() {
   const insets = useSafeAreaInsets();
-  const { destinationId, city, country } = useLocalSearchParams<{
+  const { destinationId, city, country, mode, likedAttractions: incomingLiked } = useLocalSearchParams<{
     destinationId: string;
     city: string;
     country: string;
+    mode?: string;
+    likedAttractions?: string;
   }>();
+
+  const isHiddenGemMode = mode === "hidden-gems";
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState<Attraction[]>([]);
   const [finished, setFinished] = useState(false);
   const [attractionPhotos, setAttractionPhotos] = useState<Record<string, string>>({});
 
-  const { data: attractions = [], isLoading, isError } = useQuery({
+  const { data: allAttractions = [], isLoading, isError } = useQuery({
     queryKey: ["attractions", city, country],
     queryFn: () => fetchAttractions(city || "", country || "", destinationId || ""),
     enabled: !!(city && country) || !!destinationId,
   });
+
+  const attractions = isHiddenGemMode
+    ? allAttractions.filter((a) => a.isInsider)
+    : allAttractions.filter((a) => !a.isInsider);
+  const hiddenGemCount = allAttractions.filter((a) => a.isInsider).length;
 
   // Fetch a real Google Places photo for each attraction as soon as the list loads
   React.useEffect(() => {
@@ -137,6 +146,12 @@ export default function SwipeScreen() {
     [currentIndex, attractions.length]
   );
 
+  const mergedLiked = (currentLiked: Attraction[]) => {
+    const prev = incomingLiked ? incomingLiked.split(",").filter(Boolean) : [];
+    const next = currentLiked.map((a) => a.name);
+    return [...prev, ...next].join(",");
+  };
+
   const handlePlanTrip = () => {
     router.push({
       pathname: "/food-swipe/[destinationId]",
@@ -144,7 +159,7 @@ export default function SwipeScreen() {
         destinationId: destinationId || "",
         city: city || "",
         country: country || "",
-        likedAttractions: liked.map((a) => a.name).join(","),
+        likedAttractions: mergedLiked(liked),
       },
     });
   };
@@ -155,8 +170,21 @@ export default function SwipeScreen() {
       params: {
         city: city || "",
         country: country || "",
-        likedAttractions: liked.map((a) => a.name).join(","),
+        likedAttractions: mergedLiked(liked),
         likedRestaurants: "",
+      },
+    });
+  };
+
+  const handleGoToHiddenGems = () => {
+    router.push({
+      pathname: "/swipe/[destinationId]",
+      params: {
+        destinationId: destinationId || "",
+        city: city || "",
+        country: country || "",
+        mode: "hidden-gems",
+        likedAttractions: liked.map((a) => a.name).join(","),
       },
     });
   };
@@ -174,7 +202,9 @@ export default function SwipeScreen() {
       <View style={styles.fullScreen}>
         <LinearGradient colors={["#0D1117", "#1A2332"]} style={StyleSheet.absoluteFill} />
         <ActivityIndicator color="#fff" size="large" />
-        <Text style={styles.loadingText}>Finding top spots in {city}…</Text>
+        <Text style={styles.loadingText}>
+          {isHiddenGemMode ? `Finding hidden gems near ${city}…` : `Finding top spots in ${city}…`}
+        </Text>
       </View>
     );
   }
@@ -198,7 +228,10 @@ export default function SwipeScreen() {
         liked={liked}
         city={city || ""}
         country={country || ""}
+        isHiddenGemMode={isHiddenGemMode}
+        hiddenGemCount={hiddenGemCount}
         onPlan={handlePlanTrip}
+        onHiddenGems={handleGoToHiddenGems}
         onSkipRestaurants={handleSkipToItinerary}
         onBack={handleBack}
         topPadding={topPadding}
@@ -222,7 +255,9 @@ export default function SwipeScreen() {
         <View style={styles.headerCenter}>
           <Text style={styles.headerCity}>{city}</Text>
           <Text style={styles.headerSub}>
-            {currentIndex + 1} of {attractions.length} spots
+            {isHiddenGemMode
+              ? `Hidden gem ${currentIndex + 1} of ${attractions.length}`
+              : `${currentIndex + 1} of ${attractions.length} spots`}
           </Text>
         </View>
 
@@ -478,12 +513,31 @@ function StatPill({ icon, value, label, highlight }: {
 }
 
 function ResultScreen({
-  liked, city, country, onPlan, onSkipRestaurants, onBack, topPadding, bottomPadding,
+  liked, city, country, isHiddenGemMode, hiddenGemCount,
+  onPlan, onHiddenGems, onSkipRestaurants, onBack, topPadding, bottomPadding,
 }: {
   liked: Attraction[]; city: string; country: string;
-  onPlan: () => void; onSkipRestaurants: () => void; onBack: () => void;
+  isHiddenGemMode: boolean; hiddenGemCount: number;
+  onPlan: () => void; onHiddenGems: () => void;
+  onSkipRestaurants: () => void; onBack: () => void;
   topPadding: number; bottomPadding: number;
 }) {
+  const showGemPrompt = !isHiddenGemMode && hiddenGemCount > 0;
+
+  const heroEmoji = isHiddenGemMode
+    ? (liked.length === 0 ? "🗺️" : liked.length < 2 ? "💎" : "✨")
+    : (liked.length === 0 ? "🌍" : liked.length < 3 ? "✈️" : "❤️");
+
+  const heroTitle = isHiddenGemMode
+    ? (liked.length === 0 ? "Gems saved for later" : `${liked.length} hidden gem${liked.length !== 1 ? "s" : ""} found`)
+    : (liked.length === 0 ? "Ready to explore" : `${liked.length} spot${liked.length !== 1 ? "s" : ""} you'll love`);
+
+  const heroSubtitle = isHiddenGemMode
+    ? `These off-the-beaten-path spots will be woven into your ${city} itinerary.`
+    : (liked.length === 0
+        ? `We'll create a great itinerary for ${city} based on your profile.`
+        : `These will be woven into your ${city} itinerary by the AI.`);
+
   return (
     <View style={styles.fullScreen}>
       <LinearGradient
@@ -502,19 +556,9 @@ function ResultScreen({
         </TouchableOpacity>
 
         <View style={resultStyles.heroSection}>
-          <Text style={resultStyles.bigEmoji}>
-            {liked.length === 0 ? "🌍" : liked.length < 3 ? "✈️" : "❤️"}
-          </Text>
-          <Text style={resultStyles.title}>
-            {liked.length === 0
-              ? "Ready to explore"
-              : `${liked.length} spot${liked.length !== 1 ? "s" : ""} you'll love`}
-          </Text>
-          <Text style={resultStyles.subtitle}>
-            {liked.length === 0
-              ? `We'll create a great itinerary for ${city} based on your profile.`
-              : `These will be woven into your ${city} itinerary by the AI.`}
-          </Text>
+          <Text style={resultStyles.bigEmoji}>{heroEmoji}</Text>
+          <Text style={resultStyles.title}>{heroTitle}</Text>
+          <Text style={resultStyles.subtitle}>{heroSubtitle}</Text>
         </View>
 
         {liked.length > 0 && (
@@ -545,36 +589,93 @@ function ResultScreen({
           </View>
         )}
 
-        <TouchableOpacity onPress={onPlan} activeOpacity={0.9} style={resultStyles.planBtn}>
-          <LinearGradient
-            colors={["#C4622D", "#8B3A1A"]}
-            style={resultStyles.planBtnInner}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Text style={resultStyles.planBtnEmoji}>🍽️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={resultStyles.planBtnText}>Next: Pick Restaurants</Text>
-              <Text style={resultStyles.planBtnSub}>Swipe to choose lunch & dinner spots</Text>
+        {showGemPrompt ? (
+          <>
+            {/* Hidden gems discovery prompt */}
+            <View style={resultStyles.gemPromptCard}>
+              <LinearGradient
+                colors={["rgba(109,40,217,0.35)", "rgba(76,29,149,0.55)"]}
+                style={resultStyles.gemPromptInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={resultStyles.gemPromptHeader}>
+                  <MaterialCommunityIcons name="diamond" size={22} color="#A78BFA" />
+                  <Text style={resultStyles.gemPromptTitle}>
+                    We found {hiddenGemCount} hidden gem{hiddenGemCount !== 1 ? "s" : ""} near {city}
+                  </Text>
+                </View>
+                <Text style={resultStyles.gemPromptSub}>
+                  Fewer crowds, more character. Want to explore them before picking restaurants?
+                </Text>
+                <TouchableOpacity onPress={onHiddenGems} activeOpacity={0.9} style={resultStyles.gemYesBtn}>
+                  <MaterialCommunityIcons name="diamond" size={16} color="#fff" />
+                  <Text style={resultStyles.gemYesBtnText}>Yes, show me hidden gems!</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
-            <Feather name="arrow-right" size={18} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
 
-        <View style={resultStyles.orDivider}>
-          <View style={resultStyles.orLine} />
-          <Text style={resultStyles.orText}>or</Text>
-          <View style={resultStyles.orLine} />
-        </View>
+            <View style={resultStyles.orDivider}>
+              <View style={resultStyles.orLine} />
+              <Text style={resultStyles.orText}>no thanks</Text>
+              <View style={resultStyles.orLine} />
+            </View>
 
-        <TouchableOpacity onPress={onSkipRestaurants} activeOpacity={0.8} style={resultStyles.skipRestBtn}>
-          <Feather name="fast-forward" size={18} color="#fff" />
-          <View style={{ flex: 1 }}>
-            <Text style={resultStyles.skipRestText}>Skip Restaurants</Text>
-            <Text style={resultStyles.skipRestSub}>Plan my itinerary without dining picks</Text>
-          </View>
-          <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.6)" />
-        </TouchableOpacity>
+            {/* "No" path: go straight to restaurants */}
+            <TouchableOpacity onPress={onPlan} activeOpacity={0.9} style={resultStyles.planBtn}>
+              <LinearGradient
+                colors={["#C4622D", "#8B3A1A"]}
+                style={resultStyles.planBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={resultStyles.planBtnEmoji}>🍽️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={resultStyles.planBtnText}>Next: Pick Restaurants</Text>
+                  <Text style={resultStyles.planBtnSub}>Swipe to choose lunch & dinner spots</Text>
+                </View>
+                <Feather name="arrow-right" size={18} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={onSkipRestaurants} style={resultStyles.skipBtn}>
+              <Text style={resultStyles.skipText}>Skip restaurants entirely →</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity onPress={onPlan} activeOpacity={0.9} style={resultStyles.planBtn}>
+              <LinearGradient
+                colors={["#C4622D", "#8B3A1A"]}
+                style={resultStyles.planBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={resultStyles.planBtnEmoji}>🍽️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={resultStyles.planBtnText}>Next: Pick Restaurants</Text>
+                  <Text style={resultStyles.planBtnSub}>Swipe to choose lunch & dinner spots</Text>
+                </View>
+                <Feather name="arrow-right" size={18} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={resultStyles.orDivider}>
+              <View style={resultStyles.orLine} />
+              <Text style={resultStyles.orText}>or</Text>
+              <View style={resultStyles.orLine} />
+            </View>
+
+            <TouchableOpacity onPress={onSkipRestaurants} activeOpacity={0.8} style={resultStyles.skipRestBtn}>
+              <Feather name="fast-forward" size={18} color="#fff" />
+              <View style={{ flex: 1 }}>
+                <Text style={resultStyles.skipRestText}>Skip Restaurants</Text>
+                <Text style={resultStyles.skipRestSub}>Plan my itinerary without dining picks</Text>
+              </View>
+              <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.6)" />
+            </TouchableOpacity>
+          </>
+        )}
 
         <TouchableOpacity onPress={onBack} style={resultStyles.skipBtn}>
           <Text style={resultStyles.skipText}>← Back to destinations</Text>
@@ -980,6 +1081,51 @@ const resultStyles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_600SemiBold",
     color: "#A78BFA",
+  },
+  gemPromptCard: {
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.35)",
+  },
+  gemPromptInner: {
+    padding: 20,
+    gap: 12,
+  },
+  gemPromptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  gemPromptTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    flex: 1,
+    lineHeight: 22,
+  },
+  gemPromptSub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.75)",
+    lineHeight: 20,
+  },
+  gemYesBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(167,139,250,0.3)",
+    borderWidth: 1.5,
+    borderColor: "rgba(167,139,250,0.6)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  gemYesBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
   planBtn: {
     borderRadius: 16,
