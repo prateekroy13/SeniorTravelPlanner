@@ -71,6 +71,7 @@ function buildPrompt(body: {
   days: number;
   travelMonth: string;
   likedAttractions?: string[];
+  likedDayTrips?: string[];
   likedRestaurants?: string[];
   realTravelTimes?: string;
   candidatePool?: string;
@@ -85,7 +86,12 @@ function buildPrompt(body: {
 }) {
   const likedSection =
     body.likedAttractions && body.likedAttractions.length > 0
-      ? `\nMUST INCLUDE these specific attractions the traveler loved (they swiped right on them): ${body.likedAttractions.join(", ")}. Spread them across appropriate days — group nearby ones on the same day to minimise travel.\n`
+      ? `\nMUST INCLUDE these city attractions (traveler swiped right): ${body.likedAttractions.join(", ")}. Group nearby ones on the same day.\n`
+      : "";
+
+  const dayTripSection =
+    body.likedDayTrips && body.likedDayTrips.length > 0
+      ? `\nMUST INCLUDE these day-trip destinations (each is 40–100 km from ${body.city} and requires a dedicated full day by train or bus — do NOT mix with city attractions on the same day): ${body.likedDayTrips.join(", ")}.\n`
       : "";
 
   const restaurantSection =
@@ -104,8 +110,10 @@ Traveler preferences:
 - Dietary needs: ${body.preferences.dietaryNeeds?.join(", ") || "none specified"}
 - Interests: ${body.preferences.interests?.join(", ") || "culture, history, food"}
 - Budget level: ${body.preferences.budgetLevel || "mid"}
-- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${restaurantSection}${candidateSection}${travelTimesSection}
-Day-grouping rule: place attractions that are < 20 min walk apart on the SAME day. Attractions > 30 min walk apart go on SEPARATE days.
+- Accessibility needs: ${body.preferences.accessibilityNeeds?.join(", ") || "none specified"}${likedSection}${dayTripSection}${restaurantSection}${candidateSection}${travelTimesSection}
+Day-grouping rules:
+- City attractions < 20 min walk apart → same day. > 30 min walk → separate days.
+- Day-trip destinations (listed above) → one destination per day, full day. Depart ${body.city} by train/bus in the morning, return evening. Never mix a day trip with other city attractions on the same day.
 
 Return ONLY a valid JSON object (no markdown) with this exact structure:
 {
@@ -215,26 +223,38 @@ router.post("/itineraries/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    // Fetch real walking travel times between liked attractions
-    distanceMatrixCalls = likedAttractions && likedAttractions.length > 1 ? 1 : 0;
-    const realTravelTimes =
-      likedAttractions && likedAttractions.length > 1
-        ? await getRealTravelTimes(likedAttractions, `${city}, ${country}`)
-        : "";
-
-    // Fetch verified places from cache or Google Places API.
-    // Provides the LLM with a real candidate pool → eliminates hallucinated place names.
+    // Fetch verified places — needed for both the candidate pool and to classify
+    // liked attractions as city vs. day-trip (insider) destinations.
     let candidatePool: string | undefined;
+    let likedCityAttractions = likedAttractions ?? [];
+    let likedDayTrips: string[] = [];
+
     if (coords) {
       const places = await getCityPlaces(city, country, coords);
       if (places && places.main.length > 0) {
         candidatePool = formatCandidatePool(places.main, places.insider);
+
+        // Split liked attractions: insider names are day trips (40–100 km away).
+        // City attractions get walking-time optimisation; day trips travel by train.
+        const insiderNames = new Set(places.insider.map((p) => p.name));
+        likedCityAttractions = (likedAttractions ?? []).filter((n) => !insiderNames.has(n));
+        likedDayTrips = (likedAttractions ?? []).filter((n) => insiderNames.has(n));
       }
     }
 
+    // Walking travel times only for city attractions — day trips travel by train,
+    // not on foot, so including them would produce nonsensical distances.
+    distanceMatrixCalls = likedCityAttractions.length > 1 ? 1 : 0;
+    const realTravelTimes =
+      likedCityAttractions.length > 1
+        ? await getRealTravelTimes(likedCityAttractions, `${city}, ${country}`)
+        : "";
+
     const prompt = buildPrompt({
       city, country, days, travelMonth, preferences,
-      likedAttractions, likedRestaurants, realTravelTimes, candidatePool,
+      likedAttractions: likedCityAttractions,
+      likedDayTrips,
+      likedRestaurants, realTravelTimes, candidatePool,
     });
 
     const completion = await openai.chat.completions.create({
