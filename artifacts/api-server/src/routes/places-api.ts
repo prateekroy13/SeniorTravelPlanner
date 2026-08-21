@@ -3,6 +3,34 @@ import { geocodeCityCoords, getCityPlaces } from "../utils/places";
 import type { CachedPlace } from "@workspace/db";
 
 const router: IRouter = Router();
+const MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+// City autocomplete — proxies Google Places Autocomplete, keeps API key server-side.
+router.get("/places/city-autocomplete", async (req: Request, res: Response) => {
+  const input = ((req.query.input as string) || "").trim();
+  if (!input || input.length < 2 || !MAPS_KEY) { res.json([]); return; }
+
+  try {
+    const url =
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
+      `?input=${encodeURIComponent(input)}` +
+      `&types=(cities)` +
+      `&languageCode=en` +
+      `&key=${MAPS_KEY}`;
+    const r = await fetch(url);
+    const data = (await r.json()) as any;
+    const results = (data.predictions ?? []).slice(0, 6).map((p: any) => {
+      const main: string = p.structured_formatting?.main_text ?? p.description.split(",")[0].trim();
+      // secondary_text is typically "Country" or "State, Country" — take the last part
+      const secondary: string = p.structured_formatting?.secondary_text ?? "";
+      const country = secondary.split(",").pop()?.trim() ?? "";
+      return { city: main, country, description: p.description };
+    });
+    res.json(results);
+  } catch {
+    res.json([]);
+  }
+});
 
 const TYPE_META: Record<string, { category: string; emoji: string; gradient: [string, string] }> = {
   tourist_attraction:  { category: "Attraction",  emoji: "✨", gradient: ["#7C3AED", "#5B21B6"] },

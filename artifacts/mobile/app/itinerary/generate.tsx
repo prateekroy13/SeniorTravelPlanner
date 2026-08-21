@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,9 @@ export default function GenerateScreen() {
   const [city, setCity] = useState(params.city || "");
   const [country, setCountry] = useState(params.country || "");
   const [days, setDays] = useState(0);
+  const [suggestions, setSuggestions] = useState<{ city: string; country: string; description: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -45,6 +48,29 @@ export default function GenerateScreen() {
   const likedRestaurants = params.likedRestaurants
     ? params.likedRestaurants.split(",").filter(Boolean)
     : [];
+
+  const handleCityChange = (text: string) => {
+    setCity(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/places/city-autocomplete?input=${encodeURIComponent(text)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+          setShowSuggestions(data.length > 0);
+        }
+      } catch {}
+    }, 300);
+  };
+
+  const handleSelectSuggestion = (s: { city: string; country: string }) => {
+    setCity(s.city);
+    setCountry(s.country);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const totalLiked = likedAttractions.length;
   const spotsPerDay = preferences.pace === "easy" ? 2 : preferences.pace === "active" ? 4 : 3;
@@ -209,40 +235,60 @@ export default function GenerateScreen() {
           </View>
         )}
 
-        <View style={styles.section}>
+        <View style={[styles.section, { zIndex: 100 }]}>
           <Text style={styles.sectionTitle}>Destination</Text>
-          <View style={styles.inputGroup}>
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>City</Text>
-              <View style={styles.inputRow}>
-                <Feather name="map-pin" size={16} color={Colors.light.textTertiary} />
-                <TextInput
-                  style={styles.input}
-                  value={city}
-                  onChangeText={setCity}
-                  placeholder="e.g. Lisbon, Kyoto, Vienna"
-                  placeholderTextColor={Colors.light.textTertiary}
-                  returnKeyType="next"
-                  autoCapitalize="words"
-                />
+          <View>
+            <View style={styles.inputGroup}>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>City</Text>
+                <View style={styles.inputRow}>
+                  <Feather name="map-pin" size={16} color={Colors.light.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    value={city}
+                    onChangeText={handleCityChange}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="e.g. Lisbon, Kyoto, Vienna"
+                    placeholderTextColor={Colors.light.textTertiary}
+                    returnKeyType="next"
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Country</Text>
+                <View style={styles.inputRow}>
+                  <Feather name="globe" size={16} color={Colors.light.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    value={country}
+                    onChangeText={setCountry}
+                    placeholder="e.g. Portugal, Japan, Austria"
+                    placeholderTextColor={Colors.light.textTertiary}
+                    returnKeyType="done"
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
             </View>
-            <View style={styles.divider} />
-            <View style={styles.inputWrapper}>
-              <Text style={styles.inputLabel}>Country</Text>
-              <View style={styles.inputRow}>
-                <Feather name="globe" size={16} color={Colors.light.textTertiary} />
-                <TextInput
-                  style={styles.input}
-                  value={country}
-                  onChangeText={setCountry}
-                  placeholder="e.g. Portugal, Japan, Austria"
-                  placeholderTextColor={Colors.light.textTertiary}
-                  returnKeyType="done"
-                  autoCapitalize="words"
-                />
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={styles.suggestionsDropdown}>
+                {suggestions.map((s, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.suggestionItem, i < suggestions.length - 1 && styles.suggestionBorder]}
+                    onPress={() => handleSelectSuggestion(s)}
+                  >
+                    <Feather name="map-pin" size={14} color={Colors.light.primary} />
+                    <View style={styles.suggestionTextBlock}>
+                      <Text style={styles.suggestionCity}>{s.city}</Text>
+                      {s.country ? <Text style={styles.suggestionCountry}>{s.country}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </View>
+            )}
           </View>
         </View>
 
@@ -708,6 +754,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: "#fff",
+  },
+  suggestionsDropdown: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    marginTop: 6,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+  },
+  suggestionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.borderLight,
+  },
+  suggestionTextBlock: { flex: 1 },
+  suggestionCity: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.text,
+  },
+  suggestionCountry: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    marginTop: 1,
   },
 });
 
